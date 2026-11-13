@@ -1,0 +1,158 @@
+package com.kidstube.app.ui.screens.channels
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.kidstube.app.data.model.ChannelDetailResponse
+import com.kidstube.app.data.repository.KidsTubeRepository
+import com.kidstube.app.ui.components.VideoCard
+import com.kidstube.app.ui.theme.PinkPrimary
+import com.kidstube.app.ui.theme.SurfaceDark
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChannelDetailScreen(
+    repository: KidsTubeRepository,
+    channelId: String,
+    onBackClick: () -> Unit,
+    onVideoClick: (String) -> Unit
+) {
+    var detail by remember { mutableStateOf<ChannelDetailResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(channelId) {
+        scope.launch {
+            isLoading = true
+            val res = repository.getChannelDetail(channelId)
+            detail = res.getOrNull()
+            isLoading = false
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(detail?.channel?.name ?: "Channel", maxLines = 1) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = PinkPrimary
+                )
+            } else if (detail != null) {
+                val channel = detail!!.channel
+                val videos = detail!!.videos
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    // Channel Header
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SurfaceDark)
+                                .padding(16.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                AsyncImage(
+                                    model = channel.avatarUrl,
+                                    contentDescription = channel.name,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = channel.name,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (channel.isVerified) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Verified",
+                                                tint = Color(0xFF4CC9F0),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "${channel.category} â€¢ ${videos.size} videos",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = PinkPrimary
+                                    )
+                                }
+                            }
+
+                            if (channel.description.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = channel.description,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Text(
+                            text = "Channel Videos",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                        )
+                    }
+
+                    items(videos) { video ->
+                        VideoCard(
+                            video = video,
+                            onClick = { onVideoClick(video.id) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
