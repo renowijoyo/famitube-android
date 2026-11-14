@@ -54,7 +54,7 @@ fun PlayerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.video?.title ?: "KidsTube Player", maxLines = 1) },
+                title = { Text(state.video?.title ?: "FamiTube Player", maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(

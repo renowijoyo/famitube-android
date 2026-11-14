@@ -14,6 +14,9 @@ class ParentalPreferences(context: Context) {
         private const val KEY_LAST_USAGE_DATE = "last_usage_date"
         private const val KEY_AGE_FILTER = "age_filter"
         private const val KEY_BACKEND_URL = "backend_url"
+        private const val KEY_AUTH_TOKEN = "auth_token"
+        private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_USER_NAME = "user_name"
         private const val KEY_FAVORITES = "favorite_videos_set"
         private const val KEY_HISTORY = "history_videos_list"
     }
@@ -33,6 +36,26 @@ class ParentalPreferences(context: Context) {
     var backendUrl: String
         get() = prefs.getString(KEY_BACKEND_URL, "http://10.0.2.2:4000/api/") ?: "http://10.0.2.2:4000/api/"
         set(value) = prefs.edit().putString(KEY_BACKEND_URL, value).apply()
+
+    var authToken: String
+        get() = prefs.getString(KEY_AUTH_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_AUTH_TOKEN, value).apply()
+
+    var loggedInEmail: String
+        get() = prefs.getString(KEY_USER_EMAIL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_USER_EMAIL, value).apply()
+
+    var loggedInName: String
+        get() = prefs.getString(KEY_USER_NAME, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_USER_NAME, value).apply()
+
+    fun clearAuthSession() {
+        prefs.edit()
+            .remove(KEY_AUTH_TOKEN)
+            .remove(KEY_USER_EMAIL)
+            .remove(KEY_USER_NAME)
+            .apply()
+    }
 
     fun verifyPin(pin: String): Boolean {
         return pin.trim() == parentPin

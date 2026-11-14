@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ParentalSettingsScreen(
     repository: KidsTubeRepository,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onLogout: () -> Unit = {}
 ) {
     val prefs = repository.getPreferences()
     val context = LocalContext.current
@@ -284,10 +285,32 @@ fun ParentalSettingsScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "ðŸ’¡ Tip: To curate videos from your computer, open http://localhost:4000/admin in your browser.",
+                    text = "💡 Tip: To curate videos from your computer, open http://localhost:4000/admin in your browser.",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF4CC9F0)
                 )
+            }
+
+            // 5. Signed-In Child Session
+            SettingsSectionCard(title = "Child Account Session") {
+                val signedInEmail = prefs.loggedInEmail
+                val signedInName = prefs.loggedInName
+                Text(
+                    text = if (signedInEmail.isNotBlank()) {
+                        "Signed in as ${signedInName.ifBlank { signedInEmail }} ($signedInEmail)"
+                    } else {
+                        "Not signed in"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onLogout,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign Out Child Account", color = PinkPrimary)
+                }
             }
         }
     }

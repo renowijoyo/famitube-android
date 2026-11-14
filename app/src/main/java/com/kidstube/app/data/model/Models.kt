@@ -78,3 +78,30 @@ data class ApiResponse<T>(
     @SerializedName("data") val data: T? = null,
     @SerializedName("message") val message: String? = null
 )
+
+data class LoginRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("loginType") val loginType: String = "CHILD"
+)
+
+data class AuthUser(
+    @SerializedName("id") val id: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("role") val role: String = "CHILD",
+    @SerializedName("parentId") val parentId: String? = null,
+    @SerializedName("ageRating") val ageRating: String? = null
+)
+
+data class LoginResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: AuthUser? = null,
+    @SerializedName("message") val message: String? = null
+)
+
+data class KidsFeedData(
+    @SerializedName("channels") val channels: List<Channel> = emptyList(),
+    @SerializedName("videos") val videos: List<Video> = emptyList()
+)

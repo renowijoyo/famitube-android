@@ -20,6 +20,7 @@ import com.kidstube.app.ui.screens.channels.ChannelsScreen
 import com.kidstube.app.ui.screens.favorites.FavoritesScreen
 import com.kidstube.app.ui.screens.home.HomeScreen
 import com.kidstube.app.ui.screens.home.HomeViewModel
+import com.kidstube.app.ui.screens.login.LoginScreen
 import com.kidstube.app.ui.screens.parental.ParentalSettingsScreen
 import com.kidstube.app.ui.screens.player.LiveTvPlayerScreen
 import com.kidstube.app.ui.screens.player.PlayerScreen
@@ -62,9 +63,21 @@ fun KidsTubeNavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = if (repository.isLoggedIn()) Screen.Home.route else Screen.Login.route,
             modifier = modifier.padding(innerPadding)
         ) {
+            // Child Login Gate (only parent-registered child email/Gmail allowed)
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    repository = repository,
+                    onLoginSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             // Home / Explore Tab
             composable(Screen.Home.route) {
                 val homeViewModel = rememberHomeViewModel(repository)
@@ -180,7 +193,13 @@ fun KidsTubeNavGraph(
             composable(Screen.ParentalSettings.route) {
                 ParentalSettingsScreen(
                     repository = repository,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onLogout = {
+                        repository.logout()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
                 )
             }
         }

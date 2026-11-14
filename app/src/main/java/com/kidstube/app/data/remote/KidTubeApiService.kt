@@ -1,11 +1,20 @@
 package com.kidstube.app.data.remote
 
 import com.kidstube.app.data.model.*
+import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface KidsTubeApiService {
+
+    @POST("auth/login")
+    suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
+
+    @GET("kids/feed")
+    suspend fun getKidsFeed(): ApiResponse<KidsFeedData>
 
     @GET("videos")
     suspend fun getVideos(

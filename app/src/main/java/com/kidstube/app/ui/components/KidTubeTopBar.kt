@@ -60,7 +60,7 @@ fun KidsTubeTopBar(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "KidsTube",
+                    text = "FamiTube",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     color = Color.White

@@ -11,6 +11,7 @@ object NetworkModule {
     const val DEFAULT_BASE_URL = "http://10.0.2.2:4000/api/"
 
     private var currentBaseUrl = DEFAULT_BASE_URL
+    private var currentAuthToken: String = ""
     private var apiService: KidsTubeApiService? = null
 
     private val okHttpClient: OkHttpClient by lazy {
@@ -18,10 +19,21 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
         OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val reqBuilder = chain.request().newBuilder()
+                if (currentAuthToken.isNotBlank()) {
+                    reqBuilder.addHeader("Authorization", "Bearer $currentAuthToken")
+                }
+                chain.proceed(reqBuilder.build())
+            }
             .addInterceptor(logging)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
+    }
+
+    fun updateAuthToken(token: String) {
+        currentAuthToken = token.trim()
     }
 
     fun getApiService(baseUrl: String = currentBaseUrl): KidsTubeApiService {
