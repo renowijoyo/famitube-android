@@ -1,15 +1,15 @@
-plugins {
+﻿plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
-    namespace = "com.kidstube.app"
+    namespace = "com.famitube.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.kidstube.app"
+        applicationId = "com.famitube.app"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

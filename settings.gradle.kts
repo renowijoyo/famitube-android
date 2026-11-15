@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KidsTube"
+rootProject.name = "FamiTube"
 include(":app")

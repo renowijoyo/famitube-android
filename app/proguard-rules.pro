@@ -1,4 +1,4 @@
-# Proguard rules for KidsTube
+﻿# Proguard rules for FamiTube
 -keepattributes *Annotation*
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
