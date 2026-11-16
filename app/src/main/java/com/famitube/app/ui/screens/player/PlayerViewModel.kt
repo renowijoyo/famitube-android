@@ -22,8 +22,12 @@ data class PlayerUiState(
     val isAttentionTrackingEnabled: Boolean = true,
     val hasCameraPermission: Boolean = false,
     val isViewerPresent: Boolean = true,
+    val isAutoPausedByInattention: Boolean = false,
+    val attentionPauseSeconds: Int = 15,
     val viewedSeconds: Int = 0,
     val unwatchedSeconds: Int = 0,
+    val requiredViewedSeconds: Int = 126,
+    val hasEarnedCompletionReward: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -39,8 +43,10 @@ class PlayerViewModel(
     private var lastFaceSeenAtMs: Long = System.currentTimeMillis()
 
     init {
+        val prefs = repository.getPreferences()
         _uiState.value = _uiState.value.copy(
-            isAttentionTrackingEnabled = repository.getPreferences().attentionTrackingEnabled
+            isAttentionTrackingEnabled = prefs.attentionTrackingEnabled,
+            attentionPauseSeconds = prefs.attentionPauseSeconds
         )
         loadVideo()
     }
@@ -49,15 +55,31 @@ class PlayerViewModel(
         _uiState.value = _uiState.value.copy(hasCameraPermission = granted)
     }
 
+    fun resumeFromInattention() {
+        lastFaceSeenAtMs = System.currentTimeMillis()
+        _uiState.value = _uiState.value.copy(
+            isAutoPausedByInattention = false,
+            isViewerPresent = true
+        )
+    }
+
     fun onAttentionSample(isViewing: Boolean) {
+        if (_uiState.value.isAutoPausedByInattention) return
+        val now = System.currentTimeMillis()
         if (isViewing) {
-            lastFaceSeenAtMs = System.currentTimeMillis()
+            lastFaceSeenAtMs = now
             if (!_uiState.value.isViewerPresent) {
                 _uiState.value = _uiState.value.copy(isViewerPresent = true)
             }
         } else {
-            val awayForMs = System.currentTimeMillis() - lastFaceSeenAtMs
-            if (awayForMs > 6000L && _uiState.value.isViewerPresent) {
+            val awayForMs = now - lastFaceSeenAtMs
+            val pauseThresholdMs = _uiState.value.attentionPauseSeconds * 1000L
+            if (awayForMs >= pauseThresholdMs) {
+                _uiState.value = _uiState.value.copy(
+                    isViewerPresent = false,
+                    isAutoPausedByInattention = true
+                )
+            } else if (awayForMs > 5000L && _uiState.value.isViewerPresent) {
                 _uiState.value = _uiState.value.copy(isViewerPresent = false)
             }
         }
@@ -98,13 +120,19 @@ class PlayerViewModel(
                     channelAvatar = "",
                     category = "YouTube"
                 )
-                repository.recordVideoWatched(videoId, detail.category)
+                val prefs = repository.getPreferences()
+                val requiredSec = computeRequiredViewedSeconds(detail.duration, prefs.attentionMinWatchPercent)
+                if (!prefs.attentionTrackingEnabled) {
+                    repository.recordVideoWatched(videoId, detail.category)
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     video = detail,
                     isFavorite = isFav,
                     isLimitExceeded = false,
                     remainingMinutes = remaining,
+                    requiredViewedSeconds = requiredSec,
+                    hasEarnedCompletionReward = !prefs.attentionTrackingEnabled,
                     errorMessage = null
                 )
                 startWatchTimer()
@@ -113,12 +141,17 @@ class PlayerViewModel(
 
             val result = repository.getVideoDetail(videoId)
             if (result.isSuccess) {
+                val detail = result.getOrNull()
+                val prefs = repository.getPreferences()
+                val requiredSec = computeRequiredViewedSeconds(detail?.duration ?: 180, prefs.attentionMinWatchPercent)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    video = result.getOrNull(),
+                    video = detail,
                     isFavorite = isFav,
                     isLimitExceeded = false,
                     remainingMinutes = remaining,
+                    requiredViewedSeconds = requiredSec,
+                    hasEarnedCompletionReward = !prefs.attentionTrackingEnabled,
                     errorMessage = null
                 )
                 startWatchTimer()
@@ -136,23 +169,38 @@ class PlayerViewModel(
         timerJob = viewModelScope.launch {
             while (isActive) {
                 delay(5000) // tick every 5 seconds
+                val current = _uiState.value
+                if (current.isAutoPausedByInattention) {
+                    continue
+                }
+
                 repository.getPreferences().addUsedWatchTime(5)
                 val remaining = repository.getPreferences().getRemainingMinutes()
                 val isExceeded = repository.getPreferences().isDailyLimitExceeded()
 
-                val trackingActive = _uiState.value.isAttentionTrackingEnabled && _uiState.value.hasCameraPermission
-                val viewingNow = if (trackingActive) {
-                    (System.currentTimeMillis() - lastFaceSeenAtMs) <= 6000L
-                } else {
-                    true
+                val trackingActive = current.isAttentionTrackingEnabled && current.hasCameraPermission
+                val awayForMs = System.currentTimeMillis() - lastFaceSeenAtMs
+                val pauseThresholdMs = current.attentionPauseSeconds * 1000L
+                val autoPausedNow = trackingActive && awayForMs >= pauseThresholdMs
+                val viewingNow = if (trackingActive) awayForMs <= 5000L else true
+
+                val newViewed = if (viewingNow) current.viewedSeconds + 5 else current.viewedSeconds
+                val newUnwatched = if (!viewingNow) current.unwatchedSeconds + 5 else current.unwatchedSeconds
+
+                var earnedNow = current.hasEarnedCompletionReward
+                if (!earnedNow && current.isAttentionTrackingEnabled && newViewed >= current.requiredViewedSeconds) {
+                    repository.recordVideoWatched(videoId, current.video?.category)
+                    earnedNow = true
                 }
 
-                _uiState.value = _uiState.value.copy(
+                _uiState.value = current.copy(
                     remainingMinutes = remaining,
                     isLimitExceeded = isExceeded,
                     isViewerPresent = viewingNow,
-                    viewedSeconds = if (viewingNow) _uiState.value.viewedSeconds + 5 else _uiState.value.viewedSeconds,
-                    unwatchedSeconds = if (!viewingNow) _uiState.value.unwatchedSeconds + 5 else _uiState.value.unwatchedSeconds
+                    isAutoPausedByInattention = autoPausedNow,
+                    viewedSeconds = newViewed,
+                    unwatchedSeconds = newUnwatched,
+                    hasEarnedCompletionReward = earnedNow
                 )
 
                 if (isExceeded) {
@@ -160,6 +208,11 @@ class PlayerViewModel(
                 }
             }
         }
+    }
+
+    private fun computeRequiredViewedSeconds(durationSec: Int, minPercent: Int): Int {
+        val safeDuration = durationSec.coerceAtLeast(10)
+        return ((safeDuration * minPercent) / 100).coerceAtLeast(5)
     }
 
     fun toggleFavorite() {

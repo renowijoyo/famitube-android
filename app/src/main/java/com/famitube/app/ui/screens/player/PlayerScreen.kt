@@ -183,7 +183,13 @@ fun PlayerScreen(
                                 .fillMaxSize()
                                 .background(Color.Black)
                         ) {
-                            if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                            if (state.isAutoPausedByInattention) {
+                                InattentionPausedOverlay(
+                                    awaySeconds = state.attentionPauseSeconds,
+                                    onResumeClick = { viewModel.resumeFromInattention() },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
                                 YouTubePlayerComposable(
                                     videoId = video.youtubeVideoId,
                                     modifier = Modifier.fillMaxSize()
@@ -191,6 +197,7 @@ fun PlayerScreen(
                             } else {
                                 ExoPlayerComposable(
                                     mediaUrl = video.sourceUrl,
+                                    isPaused = state.isAutoPausedByInattention,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -222,7 +229,13 @@ fun PlayerScreen(
                                     .aspectRatio(16f / 9f)
                                     .background(Color.Black)
                             ) {
-                                if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                                if (state.isAutoPausedByInattention) {
+                                    InattentionPausedOverlay(
+                                        awaySeconds = state.attentionPauseSeconds,
+                                        onResumeClick = { viewModel.resumeFromInattention() },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
                                     YouTubePlayerComposable(
                                         videoId = video.youtubeVideoId,
                                         modifier = Modifier.fillMaxSize()
@@ -230,6 +243,7 @@ fun PlayerScreen(
                                 } else {
                                     ExoPlayerComposable(
                                         mediaUrl = video.sourceUrl,
+                                        isPaused = state.isAutoPausedByInattention,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -254,11 +268,13 @@ fun PlayerScreen(
                                     Spacer(modifier = Modifier.height(10.dp))
                                     val statusColor = when {
                                         !state.hasCameraPermission -> Color(0xFF94A3B8)
+                                        state.isAutoPausedByInattention -> Color(0xFFFF5252)
                                         state.isViewerPresent -> Color(0xFF06D6A0)
                                         else -> Color(0xFFFFB703)
                                     }
                                     val statusLabel = when {
                                         !state.hasCameraPermission -> "📷 Camera permission needed for attention check"
+                                        state.isAutoPausedByInattention -> "⏸️ Auto-stopped (No viewer detected)"
                                         state.isViewerPresent -> "👀 Actively Viewing"
                                         else -> "😶 Not Viewing (Playing Unwatched)"
                                     }
@@ -278,8 +294,9 @@ fun PlayerScreen(
                                             color = statusColor
                                         )
                                         if (state.hasCameraPermission) {
+                                            val rewardSuffix = if (state.hasEarnedCompletionReward) " ✓" else ""
                                             Text(
-                                                text = "Viewed: ${state.viewedSeconds}s • Away: ${state.unwatchedSeconds}s",
+                                                text = "Viewed: ${state.viewedSeconds}/${state.requiredViewedSeconds}s$rewardSuffix",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFFCBD5E1)
@@ -394,6 +411,7 @@ fun YouTubePlayerComposable(
 @Composable
 fun ExoPlayerComposable(
     mediaUrl: String,
+    isPaused: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -404,6 +422,10 @@ fun ExoPlayerComposable(
             prepare()
             playWhenReady = true
         }
+    }
+
+    LaunchedEffect(isPaused) {
+        if (isPaused) exoPlayer.pause() else exoPlayer.play()
     }
 
     DisposableEffect(Unit) {
@@ -486,4 +508,41 @@ private tailrec fun Context.findPlayerActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findPlayerActivity()
     else -> null
+}
+
+@Composable
+private fun InattentionPausedOverlay(
+    awaySeconds: Int,
+    onResumeClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(Color(0xFF0B1120))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Are you still watching?",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Video stopped after ${awaySeconds}s with no viewer detected.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF94A3B8),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Button(
+            onClick = onResumeClick,
+            colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+        ) {
+            Text("Resume Watching", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+    }
 }

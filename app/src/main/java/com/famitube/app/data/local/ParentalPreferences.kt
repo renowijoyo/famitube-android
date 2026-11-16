@@ -26,6 +26,8 @@ class ParentalPreferences(context: Context) {
         private const val KEY_FAVORITES = "favorite_videos_set"
         private const val KEY_HISTORY = "history_videos_list"
         private const val KEY_ATTENTION_TRACKING = "attention_tracking_enabled"
+        private const val KEY_ATTENTION_PAUSE_SECONDS = "attention_pause_seconds"
+        private const val KEY_ATTENTION_MIN_WATCH_PERCENT = "attention_min_watch_percent"
     }
 
     var parentPin: String
@@ -39,6 +41,14 @@ class ParentalPreferences(context: Context) {
     var attentionTrackingEnabled: Boolean
         get() = prefs.getBoolean(KEY_ATTENTION_TRACKING, true)
         set(value) = prefs.edit().putBoolean(KEY_ATTENTION_TRACKING, value).apply()
+
+    var attentionPauseSeconds: Int
+        get() = prefs.getInt(KEY_ATTENTION_PAUSE_SECONDS, 15)
+        set(value) = prefs.edit().putInt(KEY_ATTENTION_PAUSE_SECONDS, value.coerceIn(5, 300)).apply()
+
+    var attentionMinWatchPercent: Int
+        get() = prefs.getInt(KEY_ATTENTION_MIN_WATCH_PERCENT, 70)
+        set(value) = prefs.edit().putInt(KEY_ATTENTION_MIN_WATCH_PERCENT, value.coerceIn(10, 100)).apply()
 
     var selectedAgeFilter: String
         get() = prefs.getString(KEY_AGE_FILTER, "ALL") ?: "ALL"

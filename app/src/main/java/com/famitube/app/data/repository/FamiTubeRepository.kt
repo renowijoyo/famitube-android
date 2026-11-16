@@ -115,7 +115,9 @@ class FamiTubeRepository(
             if (res.success && res.data != null) {
                 // record to watch history
                 preferences.addToHistory(id)
-                achievementManager?.recordVideoWatched(id, res.data.category)
+                if (!preferences.attentionTrackingEnabled) {
+                    achievementManager?.recordVideoWatched(id, res.data.category)
+                }
                 Result.success(res.data)
             } else {
                 Result.failure(Exception(res.message ?: "Video not found"))

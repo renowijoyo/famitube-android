@@ -45,6 +45,8 @@ fun ParentalSettingsScreen(
 
     var dailyLimit by remember { mutableIntStateOf(prefs.dailyLimitMinutes) }
     var attentionTracking by remember { mutableStateOf(prefs.attentionTrackingEnabled) }
+    var attentionPauseSeconds by remember { mutableIntStateOf(prefs.attentionPauseSeconds) }
+    var attentionMinWatchPercent by remember { mutableIntStateOf(prefs.attentionMinWatchPercent) }
     var selectedAge by remember { mutableStateOf(prefs.selectedAgeFilter) }
     var newPin by remember { mutableStateOf(prefs.parentPin) }
     var customStarsInput by remember { mutableStateOf("") }
@@ -174,6 +176,78 @@ fun ParentalSettingsScreen(
                         },
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PinkPrimary)
                     )
+                }
+
+                if (attentionTracking) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Auto-stop video if no viewer detected for:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(10, 15, 30, 60).forEach { secs ->
+                            val isSel = attentionPauseSeconds == secs
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) PinkPrimary else MaterialTheme.colorScheme.surfaceVariant)
+                                    .clickable {
+                                        attentionPauseSeconds = secs
+                                        prefs.attentionPauseSeconds = secs
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${secs}s",
+                                    color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Minimum viewed % to earn badge & stars:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(50, 70, 80, 90).forEach { pct ->
+                            val isSel = attentionMinWatchPercent == pct
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) PinkPrimary else MaterialTheme.colorScheme.surfaceVariant)
+                                    .clickable {
+                                        attentionMinWatchPercent = pct
+                                        prefs.attentionMinWatchPercent = pct
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${pct}%",
+                                    color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

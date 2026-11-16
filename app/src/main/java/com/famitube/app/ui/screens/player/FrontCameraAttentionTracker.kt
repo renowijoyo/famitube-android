@@ -34,8 +34,12 @@ class FrontCameraAttentionTracker(
     private var captureSession: CameraCaptureSession? = null
     private var imageReader: ImageReader? = null
     private var sensorOrientation: Int = 270
-    private var lastAnalyzedAtMs: Long = 0L
     private var isStarted: Boolean = false
+    private var captureRunnable: Runnable? = null
+
+    companion object {
+        private const val SAMPLE_INTERVAL_MS = 2500L
+    }
 
     @SuppressLint("MissingPermission")
     fun start() {
@@ -69,12 +73,8 @@ class FrontCameraAttentionTracker(
             reader.setOnImageAvailableListener({ r ->
                 val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
                 try {
-                    val now = System.currentTimeMillis()
-                    if (now - lastAnalyzedAtMs >= 1500L) {
-                        lastAnalyzedAtMs = now
-                        val viewing = detectFaceInYPlane(image, sensorOrientation)
-                        onAttentionSample(viewing)
-                    }
+                    val viewing = detectFaceInYPlane(image, sensorOrientation)
+                    onAttentionSample(viewing)
                 } finally {
                     image.close()
                 }
@@ -115,8 +115,10 @@ class FrontCameraAttentionTracker(
             val surface = reader.surface
             val requestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                 addTarget(surface)
-                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
             }
+            val captureRequest = requestBuilder.build()
+
             @Suppress("DEPRECATION")
             camera.createCaptureSession(
                 listOf(surface),
@@ -127,10 +129,20 @@ class FrontCameraAttentionTracker(
                             return
                         }
                         captureSession = session
-                        try {
-                            session.setRepeatingRequest(requestBuilder.build(), null, handler)
-                        } catch (_: Exception) {
+                        val runnable = object : Runnable {
+                            override fun run() {
+                                if (!isStarted || captureSession !== session) return
+                                try {
+                                    session.capture(captureRequest, null, handler)
+                                } catch (_: Exception) {
+                                }
+                                if (isStarted) {
+                                    handler.postDelayed(this, SAMPLE_INTERVAL_MS)
+                                }
+                            }
                         }
+                        captureRunnable = runnable
+                        handler.post(runnable)
                     }
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {}
@@ -143,6 +155,9 @@ class FrontCameraAttentionTracker(
 
     fun stop() {
         isStarted = false
+        captureRunnable?.let { backgroundHandler?.removeCallbacks(it) }
+        captureRunnable = null
+        backgroundHandler?.removeCallbacksAndMessages(null)
         try {
             captureSession?.close()
         } catch (_: Exception) {
