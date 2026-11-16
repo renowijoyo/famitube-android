@@ -13,7 +13,7 @@ data class Achievement(
     val description: String,
     val category: AchievementCategory,
     val targetProgress: Int,
-    val xpReward: Int,
+    val starReward: Int,
     val badgeEmoji: String
 )
 
@@ -29,17 +29,18 @@ data class AchievementProgress(
 }
 
 data class GamificationSummary(
-    val totalXp: Int,
+    val totalStarsEarned: Int,
+    val starBalance: Int,
     val level: Int,
     val rankTitle: String,
-    val xpInCurrentLevel: Int,
-    val xpForNextLevel: Int,
+    val starsInCurrentLevel: Int,
+    val starsForNextLevel: Int,
     val unlockedCount: Int,
     val totalCount: Int,
     val currentStreakDays: Int,
     val achievements: List<AchievementProgress>
 ) {
     val levelProgressFraction: Float
-        get() = if (xpForNextLevel <= 0) 1f
-        else (xpInCurrentLevel.toFloat() / xpForNextLevel.toFloat()).coerceIn(0f, 1f)
+        get() = if (starsForNextLevel <= 0) 1f
+        else (starsInCurrentLevel.toFloat() / starsForNextLevel.toFloat()).coerceIn(0f, 1f)
 }

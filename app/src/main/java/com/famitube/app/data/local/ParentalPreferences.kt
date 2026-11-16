@@ -2,10 +2,16 @@
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class ParentalPreferences(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("famitube_parental_prefs", Context.MODE_PRIVATE)
+
+    private val _ageFilterFlow = MutableStateFlow(prefs.getString(KEY_AGE_FILTER, "ALL") ?: "ALL")
+    val ageFilterFlow: StateFlow<String> = _ageFilterFlow.asStateFlow()
 
     companion object {
         private const val KEY_PARENT_PIN = "parent_pin"
@@ -31,11 +37,17 @@ class ParentalPreferences(context: Context) {
 
     var selectedAgeFilter: String
         get() = prefs.getString(KEY_AGE_FILTER, "ALL") ?: "ALL"
-        set(value) = prefs.edit().putString(KEY_AGE_FILTER, value).apply()
+        set(value) {
+            prefs.edit().putString(KEY_AGE_FILTER, value).apply()
+            _ageFilterFlow.value = value
+        }
+
+    fun isSimpleKidMode(): Boolean =
+        selectedAgeFilter == "TODDLER" || selectedAgeFilter == "YOUNG_KIDS"
 
     var backendUrl: String
-        get() = prefs.getString(KEY_BACKEND_URL, "http://10.0.2.2:4000/api/") ?: "http://10.0.2.2:4000/api/"
-        set(value) = prefs.edit().putString(KEY_BACKEND_URL, value).apply()
+        get() = com.famitube.app.data.remote.NetworkModule.DEFAULT_BASE_URL
+        set(_) { /* Hardcoded to production FamiTube API */ }
 
     var authToken: String
         get() = prefs.getString(KEY_AUTH_TOKEN, "") ?: ""

@@ -31,7 +31,7 @@ fun CategoryChip(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) PinkPrimary else SurfaceLightDark)
+            .background(if (isSelected) PinkPrimary else MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center

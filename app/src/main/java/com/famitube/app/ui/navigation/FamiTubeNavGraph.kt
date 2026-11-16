@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +61,8 @@ fun FamiTubeNavGraph(
 
     var unlockedBanner by remember { mutableStateOf<Achievement?>(null) }
     val achievementManager = repository.getAchievementManager()
+    val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
+    val isSimpleMode = ageFilter == "TODDLER" || ageFilter == "YOUNG_KIDS"
 
     LaunchedEffect(achievementManager) {
         achievementManager?.unlockEvents?.collect { achievement ->
@@ -80,6 +83,7 @@ fun FamiTubeNavGraph(
             if (showBottomBar) {
                 FamiTubeBottomBar(
                     currentRoute = currentRoute,
+                    isSimpleMode = isSimpleMode,
                     onNavigate = { route ->
                         navController.navigate(route) {
                             popUpTo(Screen.Home.route) { saveState = true }
@@ -121,6 +125,20 @@ fun FamiTubeNavGraph(
                     },
                     onNavigateToParental = {
                         navController.navigate(Screen.ParentalSettings.route)
+                    },
+                    onNavigateToBadges = {
+                        navController.navigate(Screen.Achievements.route) {
+                            popUpTo(Screen.Home.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateTab = { route ->
+                        navController.navigate(route) {
+                            popUpTo(Screen.Home.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }

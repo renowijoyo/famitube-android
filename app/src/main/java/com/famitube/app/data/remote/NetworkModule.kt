@@ -7,8 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-    // 10.0.2.2 is the default IP address to connect to host computer's localhost from Android Emulator
-    const val DEFAULT_BASE_URL = "http://10.0.2.2:4000/api/"
+    const val DEFAULT_BASE_URL = "https://famitube-api.gamantha.my.id/api/"
 
     private var currentBaseUrl = DEFAULT_BASE_URL
     private var currentAuthToken: String = ""

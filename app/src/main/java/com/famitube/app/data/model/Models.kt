@@ -159,7 +159,7 @@ data class QuizAnswerData(
 // ==========================================
 
 data class SearchSettings(
-    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = false,
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 5,
     @SerializedName("searchViewsUsed") val searchViewsUsed: Int = 0,
     @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true

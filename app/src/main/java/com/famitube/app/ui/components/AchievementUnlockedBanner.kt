@@ -47,11 +47,7 @@ fun AchievementUnlockedBanner(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(SurfaceDark, Color(0xFF282246))
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.surface)
                     .border(
                         width = 1.5.dp,
                         brush = Brush.horizontalGradient(listOf(YellowWarning, PinkPrimary)),
@@ -81,14 +77,14 @@ fun AchievementUnlockedBanner(
                         text = "BADGE UNLOCKED!",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = YellowWarning,
+                        color = Color(0xFFB45309),
                         letterSpacing = 0.8.sp
                     )
                     Text(
                         text = achievement.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -99,12 +95,12 @@ fun AchievementUnlockedBanner(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(BlueSecondary.copy(alpha = 0.28f))
+                        .background(YellowWarning.copy(alpha = 0.22f))
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "+${achievement.xpReward} XP",
-                        color = Color(0xFF93C5FD),
+                        text = "+${achievement.starReward} ⭐",
+                        color = YellowWarning,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )

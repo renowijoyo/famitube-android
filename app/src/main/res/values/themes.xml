@@ -1,6 +1,7 @@
 ﻿<resources>
     <style name="Theme.FamiTube" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#0F172A</item>
-        <item name="android:navigationBarColor">#0F172A</item>
+        <item name="android:statusBarColor">#F8FAFC</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

@@ -29,6 +29,7 @@ import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
 import com.famitube.app.ui.theme.SurfaceLightDark
+import com.famitube.app.ui.theme.YellowWarning
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,14 +46,17 @@ fun ParentalSettingsScreen(
     var dailyLimit by remember { mutableIntStateOf(prefs.dailyLimitMinutes) }
     var selectedAge by remember { mutableStateOf(prefs.selectedAgeFilter) }
     var newPin by remember { mutableStateOf(prefs.parentPin) }
-    var backendUrl by remember { mutableStateOf(prefs.backendUrl) }
+    var customStarsInput by remember { mutableStateOf("") }
     var isTestingConnection by remember { mutableStateOf(false) }
+    val starPointsManager = repository.getStarPointsManager()
+    val starBalance by (starPointsManager?.starBalanceFlow?.collectAsState()
+        ?: remember { mutableIntStateOf(0) })
 
     val ageOptions = listOf(
-        "ALL" to "All Kids (Any Age)",
-        "TODDLER" to "Toddlers (Ages 2-4)",
-        "YOUNG_KIDS" to "Young Kids (Ages 5-8)",
-        "OLDER_KIDS" to "Older Kids (Ages 9-12)"
+        "ALL" to "Pre-Teens & Up (Ages 12+)",
+        "TODDLER" to "Toddlers (Ages 0-4)",
+        "YOUNG_KIDS" to "Young Kids (Ages 5-7)",
+        "OLDER_KIDS" to "Explorers / Tweens (Ages 8-11)"
     )
 
     val limitOptions = listOf(15, 30, 45, 60, 90, 120)
@@ -66,11 +70,11 @@ fun ParentalSettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { paddingValues ->
@@ -143,7 +147,102 @@ fun ParentalSettingsScreen(
                 }
             }
 
-            // 2. Age Content Filter
+            // 2. Star Points Rewards
+            SettingsSectionCard(title = "Star Points Rewards") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Reward your child with Stars for video requests & perks.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(YellowWarning.copy(alpha = 0.18f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "⭐ $starBalance",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp,
+                            color = YellowWarning
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(10, 25, 50, 100).forEach { gift ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(SurfaceLightDark)
+                                .clickable {
+                                    repository.awardStarsFromParent(gift, "Gift from Parent (+$gift ⭐)")
+                                    Toast.makeText(context, "Gave +$gift ⭐ to child!", Toast.LENGTH_SHORT).show()
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+$gift ⭐",
+                                color = YellowWarning,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = customStarsInput,
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() } && input.length <= 4) {
+                                customStarsInput = input
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        label = { Text("Custom Stars") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Button(
+                        onClick = {
+                            val amount = customStarsInput.toIntOrNull() ?: 0
+                            if (amount > 0) {
+                                repository.awardStarsFromParent(amount, "Gift from Parent (+$amount ⭐)")
+                                customStarsInput = ""
+                                Toast.makeText(context, "Gave +$amount ⭐ to child!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Enter a valid star amount", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                    ) {
+                        Text("Give Stars")
+                    }
+                }
+            }
+
+            // 3. Age Content Filter
             SettingsSectionCard(title = "Age Filter") {
                 Text(
                     text = "Filter videos shown in the app to match your child's age group.",
@@ -222,73 +321,37 @@ fun ParentalSettingsScreen(
                 }
             }
 
-            // 4. Backend Server Configuration
+            // 4. Backend Server Connection Status
             SettingsSectionCard(title = "Backend Server Connection") {
                 Text(
-                    text = "Connect to your local or cloud FamiTube Curation Studio.",
+                    text = "Connected to FamiTube Cloud Studio.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = backendUrl,
-                    onValueChange = { backendUrl = it },
-                    label = { Text("Backend API URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            prefs.backendUrl = backendUrl
-                            NetworkModule.updateBaseUrl(backendUrl)
-                            scope.launch {
-                                isTestingConnection = true
-                                val test = repository.getAppConfig()
-                                isTestingConnection = false
-                                if (test.isSuccess) {
-                                    Toast.makeText(context, "Connected successfully to FamiTube Backend!", Toast.LENGTH_LONG).show()
-                                } else {
-                                    Toast.makeText(context, "Connection failed: ${test.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
-                                }
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isTestingConnection = true
+                            val test = repository.getAppConfig()
+                            isTestingConnection = false
+                            if (test.isSuccess) {
+                                Toast.makeText(context, "Connected successfully to FamiTube Backend!", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "Connection failed: ${test.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
                             }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
-                    ) {
-                        if (isTestingConnection) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
-                        } else {
-                            Text("Save & Test")
                         }
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            backendUrl = NetworkModule.DEFAULT_BASE_URL
-                            prefs.backendUrl = backendUrl
-                            NetworkModule.updateBaseUrl(backendUrl)
-                            Toast.makeText(context, "Reset to default emulator address", Toast.LENGTH_SHORT).show()
-                        }
-                    ) {
-                        Text("Reset")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                ) {
+                    if (isTestingConnection) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
+                    } else {
+                        Text("Test Connection")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "💡 Tip: To curate videos from your computer, open http://localhost:4000/admin in your browser.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF4CC9F0)
-                )
             }
 
             // 5. Signed-In Child Session
@@ -324,7 +387,7 @@ fun SettingsSectionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

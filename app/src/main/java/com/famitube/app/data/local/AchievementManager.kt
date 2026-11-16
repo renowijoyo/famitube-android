@@ -6,6 +6,7 @@ import com.famitube.app.data.model.Achievement
 import com.famitube.app.data.model.AchievementCategory
 import com.famitube.app.data.model.AchievementProgress
 import com.famitube.app.data.model.GamificationSummary
+import com.famitube.app.data.model.StarSource
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,7 +20,8 @@ import java.util.Locale
 
 class AchievementManager(
     context: Context,
-    private val preferences: ParentalPreferences
+    private val preferences: ParentalPreferences,
+    private val starPointsManager: StarPointsManager
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("famitube_achievements_prefs", Context.MODE_PRIVATE)
@@ -31,7 +33,7 @@ class AchievementManager(
     val summaryFlow: StateFlow<GamificationSummary> = _summaryFlow.asStateFlow()
 
     companion object {
-        private const val XP_PER_LEVEL = 100
+        private const val STARS_PER_LEVEL = 100
 
         val CATALOG: List<Achievement> = listOf(
             Achievement(
@@ -40,7 +42,7 @@ class AchievementManager(
                 description = "Watch your very first video on FamiTube.",
                 category = AchievementCategory.WATCHING,
                 targetProgress = 1,
-                xpReward = 25,
+                starReward = 25,
                 badgeEmoji = "🎬"
             ),
             Achievement(
@@ -49,7 +51,7 @@ class AchievementManager(
                 description = "Watch 5 different videos.",
                 category = AchievementCategory.WATCHING,
                 targetProgress = 5,
-                xpReward = 50,
+                starReward = 50,
                 badgeEmoji = "🚀"
             ),
             Achievement(
@@ -58,7 +60,7 @@ class AchievementManager(
                 description = "Watch 15 different videos.",
                 category = AchievementCategory.WATCHING,
                 targetProgress = 15,
-                xpReward = 100,
+                starReward = 100,
                 badgeEmoji = "🌟"
             ),
             Achievement(
@@ -67,7 +69,7 @@ class AchievementManager(
                 description = "Watch videos from 3 different categories.",
                 category = AchievementCategory.WATCHING,
                 targetProgress = 3,
-                xpReward = 60,
+                starReward = 60,
                 badgeEmoji = "🧭"
             ),
             Achievement(
@@ -76,7 +78,7 @@ class AchievementManager(
                 description = "Save your first video to Favorites.",
                 category = AchievementCategory.CURATING,
                 targetProgress = 1,
-                xpReward = 25,
+                starReward = 25,
                 badgeEmoji = "❤️"
             ),
             Achievement(
@@ -85,7 +87,7 @@ class AchievementManager(
                 description = "Save 5 videos to your Favorites.",
                 category = AchievementCategory.CURATING,
                 targetProgress = 5,
-                xpReward = 60,
+                starReward = 60,
                 badgeEmoji = "💖"
             ),
             Achievement(
@@ -94,7 +96,7 @@ class AchievementManager(
                 description = "Create your first custom playlist.",
                 category = AchievementCategory.CURATING,
                 targetProgress = 1,
-                xpReward = 40,
+                starReward = 40,
                 badgeEmoji = "🎵"
             ),
             Achievement(
@@ -103,7 +105,7 @@ class AchievementManager(
                 description = "Visit 3 different creator channels.",
                 category = AchievementCategory.LEARNING,
                 targetProgress = 3,
-                xpReward = 40,
+                starReward = 40,
                 badgeEmoji = "📺"
             ),
             Achievement(
@@ -112,7 +114,7 @@ class AchievementManager(
                 description = "Unlock a channel by passing a quiz.",
                 category = AchievementCategory.LEARNING,
                 targetProgress = 1,
-                xpReward = 50,
+                starReward = 50,
                 badgeEmoji = "🧠"
             ),
             Achievement(
@@ -121,7 +123,7 @@ class AchievementManager(
                 description = "Pass 3 channel quizzes.",
                 category = AchievementCategory.LEARNING,
                 targetProgress = 3,
-                xpReward = 120,
+                starReward = 120,
                 badgeEmoji = "🏆"
             ),
             Achievement(
@@ -130,7 +132,7 @@ class AchievementManager(
                 description = "Search for safe videos 3 times.",
                 category = AchievementCategory.HABITS,
                 targetProgress = 3,
-                xpReward = 30,
+                starReward = 30,
                 badgeEmoji = "🔍"
             ),
             Achievement(
@@ -139,7 +141,7 @@ class AchievementManager(
                 description = "Visit FamiTube on 3 days in a row.",
                 category = AchievementCategory.HABITS,
                 targetProgress = 3,
-                xpReward = 100,
+                starReward = 100,
                 badgeEmoji = "🔥"
             )
         )
@@ -162,6 +164,7 @@ class AchievementManager(
     private fun key(name: String): String = "${userPrefix()}_$name"
 
     fun refreshSummary() {
+        starPointsManager.refreshForCurrentUser()
         _summaryFlow.value = buildSummary()
     }
 
@@ -256,6 +259,14 @@ class AchievementManager(
         }
         editor.apply()
 
+        newlyUnlocked.forEach { achievement ->
+            starPointsManager.awardStars(
+                amount = achievement.starReward,
+                source = StarSource.ACHIEVEMENT,
+                description = "Badge: ${achievement.title}"
+            )
+        }
+
         _summaryFlow.value = buildSummary()
         newlyUnlocked.forEach { _unlockEvents.tryEmit(it) }
     }
@@ -286,7 +297,7 @@ class AchievementManager(
     }
 
     private fun buildSummary(): GamificationSummary {
-        var totalXp = 0
+        var totalBadgeStars = 0
         var unlockedCount = 0
 
         val items = CATALOG.map { achievement ->
@@ -296,7 +307,7 @@ class AchievementManager(
             val clampedProgress = rawProgress.coerceAtMost(achievement.targetProgress)
 
             if (isUnlocked) {
-                totalXp += achievement.xpReward
+                totalBadgeStars += achievement.starReward
                 unlockedCount++
             }
 
@@ -308,16 +319,18 @@ class AchievementManager(
             )
         }
 
-        val level = (totalXp / XP_PER_LEVEL) + 1
-        val xpInLevel = totalXp % XP_PER_LEVEL
+        val totalStarsEarned = maxOf(totalBadgeStars, starPointsManager.getTotalEarned())
+        val level = (totalStarsEarned / STARS_PER_LEVEL) + 1
+        val starsInLevel = totalStarsEarned % STARS_PER_LEVEL
         val streak = prefs.getInt(key("streak_days"), 0)
 
         return GamificationSummary(
-            totalXp = totalXp,
+            totalStarsEarned = totalStarsEarned,
+            starBalance = starPointsManager.getBalance(),
             level = level,
             rankTitle = rankTitleForLevel(level),
-            xpInCurrentLevel = xpInLevel,
-            xpForNextLevel = XP_PER_LEVEL,
+            starsInCurrentLevel = starsInLevel,
+            starsForNextLevel = STARS_PER_LEVEL,
             unlockedCount = unlockedCount,
             totalCount = CATALOG.size,
             currentStreakDays = streak,

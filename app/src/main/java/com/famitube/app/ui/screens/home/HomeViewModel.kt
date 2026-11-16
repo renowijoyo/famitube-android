@@ -12,9 +12,9 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val isLoading: Boolean = true,
+    val isLoadingTopicVideos: Boolean = false,
     val categories: List<Category> = emptyList(),
     val selectedCategory: String? = null,
-    val featuredVideo: Video? = null,
     val videos: List<Video> = emptyList(),
     val remainingMinutes: Int = 45,
     val errorMessage: String? = null
@@ -27,6 +27,9 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    val starBalance: StateFlow<Int>? = repository.getStarPointsManager()?.starBalanceFlow
+    val ageFilterFlow: StateFlow<String> = repository.getPreferences().ageFilterFlow
+
     init {
         repository.recordDailyVisit()
         loadData()
@@ -37,38 +40,24 @@ class HomeViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             val remaining = repository.getPreferences().getRemainingMinutes()
-            val ageFilter = repository.getPreferences().selectedAgeFilter
-
-            // 1. Fetch Categories
             val categoriesResult = repository.getCategories()
             val categories = categoriesResult.getOrDefault(emptyList())
+                .filter { it.name != "All Videos" }
 
-            // 2. Fetch Featured Video
-            val featuredResult = repository.getVideos(featured = true, ageRating = ageFilter)
-            val featured = featuredResult.getOrNull()?.firstOrNull()
-
-            // 3. Fetch Category Videos
-            val selectedCat = _uiState.value.selectedCategory
-            val videosResult = repository.getVideos(
-                category = if (selectedCat == "All Videos" || selectedCat == null) null else selectedCat,
-                ageRating = ageFilter
-            )
-
-            if (videosResult.isSuccess) {
+            if (categoriesResult.isSuccess || categories.isNotEmpty()) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     categories = categories,
-                    featuredVideo = featured,
-                    videos = videosResult.getOrDefault(emptyList()),
                     remainingMinutes = remaining,
                     errorMessage = null
                 )
             } else {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    categories = categories,
+                    categories = emptyList(),
                     remainingMinutes = remaining,
-                    errorMessage = videosResult.exceptionOrNull()?.localizedMessage ?: "Failed to connect to FamiTube server"
+                    errorMessage = categoriesResult.exceptionOrNull()?.localizedMessage
+                        ?: "Failed to connect to FamiTube server"
                 )
             }
         }
@@ -76,23 +65,30 @@ class HomeViewModel(
 
     fun selectCategory(categoryName: String) {
         val newSelection = if (_uiState.value.selectedCategory == categoryName) null else categoryName
-        _uiState.value = _uiState.value.copy(selectedCategory = newSelection)
+        if (newSelection == null) {
+            _uiState.value = _uiState.value.copy(
+                selectedCategory = null,
+                videos = emptyList(),
+                isLoadingTopicVideos = false
+            )
+            return
+        }
+        _uiState.value = _uiState.value.copy(selectedCategory = newSelection, isLoadingTopicVideos = true)
         loadVideosForCurrentSelection()
     }
 
     private fun loadVideosForCurrentSelection() {
         viewModelScope.launch {
-            val selectedCat = _uiState.value.selectedCategory
+            val selectedCat = _uiState.value.selectedCategory ?: return@launch
             val ageFilter = repository.getPreferences().selectedAgeFilter
             val result = repository.getVideos(
-                category = if (selectedCat == "All Videos" || selectedCat == null) null else selectedCat,
+                category = selectedCat,
                 ageRating = ageFilter
             )
-            if (result.isSuccess) {
-                _uiState.value = _uiState.value.copy(
-                    videos = result.getOrDefault(emptyList())
-                )
-            }
+            _uiState.value = _uiState.value.copy(
+                isLoadingTopicVideos = false,
+                videos = result.getOrDefault(emptyList())
+            )
         }
     }
 
@@ -100,6 +96,9 @@ class HomeViewModel(
         _uiState.value = _uiState.value.copy(
             remainingMinutes = repository.getPreferences().getRemainingMinutes()
         )
+        if (_uiState.value.selectedCategory != null) {
+            loadVideosForCurrentSelection()
+        }
     }
 
     fun verifyParentPin(pin: String): Boolean {

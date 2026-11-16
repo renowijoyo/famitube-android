@@ -3,11 +3,15 @@
 import android.app.Application
 import com.famitube.app.data.local.AchievementManager
 import com.famitube.app.data.local.ParentalPreferences
+import com.famitube.app.data.local.StarPointsManager
 import com.famitube.app.data.repository.FamiTubeRepository
 
 class FamiTubeApp : Application() {
 
     lateinit var preferences: ParentalPreferences
+        private set
+
+    lateinit var starPointsManager: StarPointsManager
         private set
 
     lateinit var achievementManager: AchievementManager
@@ -19,7 +23,8 @@ class FamiTubeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         preferences = ParentalPreferences(this)
-        achievementManager = AchievementManager(this, preferences)
-        repository = FamiTubeRepository(preferences, achievementManager)
+        starPointsManager = StarPointsManager(this, preferences)
+        achievementManager = AchievementManager(this, preferences, starPointsManager)
+        repository = FamiTubeRepository(preferences, achievementManager, starPointsManager)
     }
 }

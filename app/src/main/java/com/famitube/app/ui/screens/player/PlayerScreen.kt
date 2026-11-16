@@ -39,10 +39,7 @@ import com.famitube.app.ui.components.VideoCard
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
 import com.famitube.app.ui.theme.SurfaceLightDark
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
+import com.famitube.app.ui.components.YouTubeIFramePlayer
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,44 +219,10 @@ fun YouTubePlayerComposable(
     videoId: String,
     modifier: Modifier = Modifier
 ) {
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    var playerRef by remember { mutableStateOf<YouTubePlayer?>(null) }
-
-    LaunchedEffect(videoId, playerRef) {
-        playerRef?.loadVideo(videoId, 0f)
-    }
-
-    AndroidView(
-        factory = { ctx ->
-            YouTubePlayerView(ctx).apply {
-                layoutParams = FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                lifecycleOwner.lifecycle.addObserver(this)
-                enableAutomaticInitialization = false
-                (getChildAt(0) as? android.webkit.WebView)?.settings?.apply {
-                    javaScriptEnabled = true
-                    domStorageEnabled = true
-                    userAgentString = "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
-                }
-                val options = IFramePlayerOptions.Builder()
-                    .controls(1)
-                    .rel(0)
-                    .origin("https://www.youtube.com")
-                    .build()
-                initialize(object : AbstractYouTubePlayerListener() {
-                    override fun onReady(youTubePlayer: YouTubePlayer) {
-                        playerRef = youTubePlayer
-                        youTubePlayer.loadVideo(videoId, 0f)
-                    }
-                }, options)
-            }
-        },
-        onRelease = { view ->
-            lifecycleOwner.lifecycle.removeObserver(view)
-            view.release()
-        },
+    YouTubeIFramePlayer(
+        videoId = videoId,
+        controls = true,
+        startSeconds = 0,
         modifier = modifier
     )
 }

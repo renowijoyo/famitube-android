@@ -36,8 +36,6 @@ fun LoginScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var backendUrl by remember { mutableStateOf(prefs.backendUrl) }
-    var showServerConfig by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -167,46 +165,6 @@ fun LoginScreen(
                         )
                     } else {
                         Text("Sign In", fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                TextButton(
-                    onClick = { showServerConfig = !showServerConfig },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (showServerConfig) "Hide Server URL" else "Server URL Settings",
-                        color = TextSecondary
-                    )
-                }
-
-                if (showServerConfig) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = backendUrl,
-                        onValueChange = { backendUrl = it },
-                        label = { Text("Backend API URL") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            prefs.backendUrl = backendUrl.trim()
-                            NetworkModule.updateBaseUrl(backendUrl.trim())
-                        },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("Apply URL")
                     }
                 }
             }

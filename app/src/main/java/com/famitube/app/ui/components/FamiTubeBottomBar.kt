@@ -18,20 +18,29 @@ import com.famitube.app.ui.theme.SurfaceDark
 fun FamiTubeBottomBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
+    isSimpleMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     NavigationBar(
         modifier = modifier,
-        containerColor = SurfaceDark,
-        contentColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        val items = listOf(
-            Triple(Screen.Home.route, "Explore", Icons.Default.Home),
-            Triple(Screen.Channels.route, "Channels", Icons.Default.Tv),
-            Triple(Screen.Playlists.route, "Playlists", Icons.Default.VideoLibrary),
-            Triple(Screen.Favorites.route, "Favorites", Icons.Default.Favorite),
-            Triple(Screen.Achievements.route, "Badges", Icons.Default.EmojiEvents)
-        )
+        val items = if (isSimpleMode) {
+            listOf(
+                Triple(Screen.Home.route, "Topics", Icons.Default.Home),
+                Triple(Screen.Favorites.route, "Favorites", Icons.Default.Favorite),
+                Triple(Screen.Achievements.route, "Badges", Icons.Default.EmojiEvents)
+            )
+        } else {
+            listOf(
+                Triple(Screen.Home.route, "Explore", Icons.Default.Home),
+                Triple(Screen.Channels.route, "Channels", Icons.Default.Tv),
+                Triple(Screen.Playlists.route, "Playlists", Icons.Default.VideoLibrary),
+                Triple(Screen.Favorites.route, "Favorites", Icons.Default.Favorite),
+                Triple(Screen.Achievements.route, "Badges", Icons.Default.EmojiEvents)
+            )
+        }
 
         items.forEach { (route, label, icon) ->
             val isSelected = currentRoute == route

@@ -3,13 +3,15 @@
 import com.google.gson.Gson
 import com.famitube.app.data.local.AchievementManager
 import com.famitube.app.data.local.ParentalPreferences
+import com.famitube.app.data.local.StarPointsManager
 import com.famitube.app.data.model.*
 import com.famitube.app.data.remote.FamiTubeApiService
 import com.famitube.app.data.remote.NetworkModule
 
 class FamiTubeRepository(
     private val preferences: ParentalPreferences,
-    private val achievementManager: AchievementManager? = null
+    private val achievementManager: AchievementManager? = null,
+    private val starPointsManager: StarPointsManager? = null
 ) {
     init {
         if (preferences.authToken.isNotBlank()) {
@@ -257,6 +259,30 @@ class FamiTubeRepository(
     fun getPreferences(): ParentalPreferences = preferences
 
     fun getAchievementManager(): AchievementManager? = achievementManager
+
+    fun getStarPointsManager(): StarPointsManager? = starPointsManager
+
+    fun awardStars(amount: Int, source: StarSource, description: String): Int {
+        val updated = starPointsManager?.awardStars(amount, source, description) ?: 0
+        achievementManager?.refreshSummary()
+        return updated
+    }
+
+    fun awardStarsFromParent(amount: Int, reason: String = "Gift from Parent"): Int {
+        return awardStars(amount, StarSource.PARENT_GIFT, reason)
+    }
+
+    fun spendStarsForVideoRequest(videoTitle: String, cost: Int = StarCosts.VIDEO_REQUEST): Boolean {
+        val spent = starPointsManager?.spendStars(
+            cost = cost,
+            source = StarSource.VIDEO_REQUEST,
+            description = "Requested: $videoTitle"
+        ) ?: true
+        if (spent) {
+            achievementManager?.refreshSummary()
+        }
+        return spent
+    }
 
     fun recordDailyVisit() {
         achievementManager?.recordDailyVisit()

@@ -21,6 +21,7 @@ import com.famitube.app.ui.theme.PinkLight
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
 import com.famitube.app.ui.theme.SurfaceLightDark
+import com.famitube.app.ui.theme.YellowWarning
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,12 +29,15 @@ fun FamiTubeTopBar(
     remainingMinutes: Int,
     onSearchClick: () -> Unit,
     onParentalClick: () -> Unit,
+    starBalance: Int? = null,
+    onStarsClick: () -> Unit = {},
+    showSearchButton: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
         modifier = modifier,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = SurfaceDark
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -63,34 +67,54 @@ fun FamiTubeTopBar(
                     text = "FamiTube",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
         actions = {
+            if (starBalance != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(YellowWarning.copy(alpha = 0.2f))
+                        .clickable(onClick = onStarsClick)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "⭐ $starBalance",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB45309)
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+
             // Remaining Watch Time Pill
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .background(SurfaceLightDark)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
                     text = "${remainingMinutes}m left",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (remainingMinutes < 10) Color(0xFFFF5252) else Color(0xFF4CC9F0)
+                    color = if (remainingMinutes < 10) Color(0xFFDC2626) else Color(0xFF0284C7)
                 )
             }
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Safe Videos",
-                    tint = Color.White
-                )
+            if (showSearchButton) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search Safe Videos",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             IconButton(onClick = onParentalClick) {
