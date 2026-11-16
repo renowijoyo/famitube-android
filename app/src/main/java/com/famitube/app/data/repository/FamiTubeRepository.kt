@@ -1,5 +1,6 @@
 ﻿package com.famitube.app.data.repository
 
+import android.net.Uri
 import com.google.gson.Gson
 import com.famitube.app.data.local.AchievementManager
 import com.famitube.app.data.local.ParentalPreferences
@@ -7,15 +8,55 @@ import com.famitube.app.data.local.StarPointsManager
 import com.famitube.app.data.model.*
 import com.famitube.app.data.remote.FamiTubeApiService
 import com.famitube.app.data.remote.NetworkModule
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class FamiTubeRepository(
     private val preferences: ParentalPreferences,
     private val achievementManager: AchievementManager? = null,
     private val starPointsManager: StarPointsManager? = null
 ) {
+    private val _oauthCallbackFlow = MutableSharedFlow<Uri>(replay = 1, extraBufferCapacity = 4)
+    val oauthCallbackFlow: SharedFlow<Uri> = _oauthCallbackFlow.asSharedFlow()
+
     init {
         if (preferences.authToken.isNotBlank()) {
             NetworkModule.updateAuthToken(preferences.authToken)
+        }
+    }
+
+    fun emitOAuthCallback(uri: Uri) {
+        _oauthCallbackFlow.tryEmit(uri)
+    }
+
+    fun getGoogleMobileOAuthStartUrl(): String {
+        val base = preferences.backendUrl.trimEnd('/')
+        return "$base/auth/google/mobile/start"
+    }
+
+    suspend fun completeGoogleOAuth(token: String): Result<AuthUser> {
+        return try {
+            NetworkModule.updateAuthToken(token)
+            val response = api.getAuthMe()
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.user != null) {
+                preferences.authToken = token
+                preferences.loggedInEmail = body.user.email
+                preferences.loggedInName = body.user.name
+                if (!body.user.ageRating.isNullOrBlank()) {
+                    preferences.selectedAgeFilter = body.user.ageRating
+                }
+                achievementManager?.refreshSummary()
+                achievementManager?.recordDailyVisit()
+                Result.success(body.user)
+            } else {
+                NetworkModule.updateAuthToken("")
+                Result.failure(Exception("Google sign-in failed to load account."))
+            }
+        } catch (e: Exception) {
+            NetworkModule.updateAuthToken("")
+            Result.failure(e)
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿package com.famitube.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +16,7 @@ class MainActivity : ComponentActivity() {
 
         val app = application as FamiTubeApp
         val repository = app.repository
+        handleOAuthIntent(intent, repository)
 
         setContent {
             FamiTubeTheme {
@@ -24,6 +26,20 @@ class MainActivity : ComponentActivity() {
                     repository = repository
                 )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val app = application as FamiTubeApp
+        handleOAuthIntent(intent, app.repository)
+    }
+
+    private fun handleOAuthIntent(intent: Intent?, repository: com.famitube.app.data.repository.FamiTubeRepository) {
+        val data = intent?.data ?: return
+        if (data.scheme == "famitube" && data.host == "auth-callback") {
+            repository.emitOAuthCallback(data)
         }
     }
 }

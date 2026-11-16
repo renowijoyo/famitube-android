@@ -1,5 +1,8 @@
 ﻿package com.famitube.app.ui.screens.login
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,15 +10,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayCircleFilled
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -32,6 +37,7 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val prefs = repository.getPreferences()
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var email by remember { mutableStateOf("") }
@@ -39,10 +45,31 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(Unit) {
+        repository.oauthCallbackFlow.collect { uri ->
+            val err = uri.getQueryParameter("error")
+            val token = uri.getQueryParameter("token")
+            if (!err.isNullOrBlank()) {
+                isLoading = false
+                errorMessage = err
+            } else if (!token.isNullOrBlank()) {
+                isLoading = true
+                errorMessage = null
+                val result = repository.completeGoogleOAuth(token)
+                isLoading = false
+                result.onSuccess {
+                    onLoginSuccess()
+                }.onFailure { e ->
+                    errorMessage = e.message ?: "Google sign-in failed."
+                }
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -63,13 +90,13 @@ fun LoginScreen(
                 text = "FamiTube",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Sign in with your email / Gmail account",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
@@ -79,20 +106,20 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceDark)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(20.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(CyanAccent.copy(alpha = 0.12f))
+                        .background(BlueSecondary.copy(alpha = 0.1f))
                         .padding(12.dp)
                 ) {
                     Text(
                         text = "Only email/Gmail accounts previously registered by a parent or guardian can sign in.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = CyanAccent
+                        color = BlueSecondary
                     )
                 }
 
@@ -159,13 +186,56 @@ fun LoginScreen(
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
-                            color = TextPrimary,
+                            color = Color.White,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(20.dp)
                         )
                     } else {
                         Text("Sign In", fontWeight = FontWeight.Bold)
                     }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "  or  ",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        errorMessage = null
+                        val oauthUrl = repository.getGoogleMobileOAuthStartUrl()
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(oauthUrl))
+                        context.startActivity(intent)
+                    },
+                    enabled = !isLoading,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccountCircle,
+                        contentDescription = null,
+                        tint = PinkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Continue with Google",
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }

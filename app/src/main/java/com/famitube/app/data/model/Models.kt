@@ -158,6 +158,11 @@ data class QuizAnswerData(
 // KID YOUTUBE SEARCH, HISTORY & PLAYLISTS
 // ==========================================
 
+data class AuthMeResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("user") val user: AuthUser? = null
+)
+
 data class SearchSettings(
     @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,

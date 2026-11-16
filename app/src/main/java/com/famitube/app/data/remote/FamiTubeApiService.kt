@@ -14,6 +14,9 @@ interface FamiTubeApiService {
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
+    @GET("auth/me")
+    suspend fun getAuthMe(): Response<AuthMeResponse>
+
     @GET("kids/feed")
     suspend fun getKidsFeed(): ApiResponse<KidsFeedData>
 
