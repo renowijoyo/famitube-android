@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ fun FamiTubeTopBar(
     onParentalClick: () -> Unit,
     starBalance: Int? = null,
     onStarsClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     showSearchButton: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -115,6 +117,14 @@ fun FamiTubeTopBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
+            }
+
+            IconButton(onClick = onProfileClick) {
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "My Profile",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
 
             IconButton(onClick = onParentalClick) {

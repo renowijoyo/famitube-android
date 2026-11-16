@@ -13,6 +13,9 @@ class ParentalPreferences(context: Context) {
     private val _ageFilterFlow = MutableStateFlow(prefs.getString(KEY_AGE_FILTER, "ALL") ?: "ALL")
     val ageFilterFlow: StateFlow<String> = _ageFilterFlow.asStateFlow()
 
+    private val _themeModeFlow = MutableStateFlow(prefs.getString(KEY_THEME_MODE, "LIGHT") ?: "LIGHT")
+    val themeModeFlow: StateFlow<String> = _themeModeFlow.asStateFlow()
+
     companion object {
         private const val KEY_PARENT_PIN = "parent_pin"
         private const val KEY_DAILY_LIMIT_MINS = "daily_limit_mins"
@@ -28,7 +31,18 @@ class ParentalPreferences(context: Context) {
         private const val KEY_ATTENTION_TRACKING = "attention_tracking_enabled"
         private const val KEY_ATTENTION_PAUSE_SECONDS = "attention_pause_seconds"
         private const val KEY_ATTENTION_MIN_WATCH_PERCENT = "attention_min_watch_percent"
+        private const val KEY_THEME_MODE = "theme_mode"
     }
+
+    var themeMode: String
+        get() = prefs.getString(KEY_THEME_MODE, "LIGHT") ?: "LIGHT"
+        set(value) {
+            val normalized = value.uppercase().let {
+                if (it in listOf("SYSTEM", "LIGHT", "DARK")) it else "LIGHT"
+            }
+            prefs.edit().putString(KEY_THEME_MODE, normalized).apply()
+            _themeModeFlow.value = normalized
+        }
 
     var parentPin: String
         get() = prefs.getString(KEY_PARENT_PIN, "1234") ?: "1234"

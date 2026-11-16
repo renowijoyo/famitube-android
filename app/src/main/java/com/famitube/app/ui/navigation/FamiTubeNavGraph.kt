@@ -39,6 +39,7 @@ import com.famitube.app.ui.screens.player.LiveTvPlayerScreen
 import com.famitube.app.ui.screens.player.PlayerScreen
 import com.famitube.app.ui.screens.player.PlayerViewModel
 import com.famitube.app.ui.screens.playlists.PlaylistsScreen
+import com.famitube.app.ui.screens.profile.ProfileScreen
 import com.famitube.app.ui.screens.search.SearchScreen
 
 @Composable
@@ -133,11 +134,34 @@ fun FamiTubeNavGraph(
                             restoreState = true
                         }
                     },
+                    onNavigateToProfile = {
+                        navController.navigate(Screen.Profile.route)
+                    },
                     onNavigateTab = { route ->
                         navController.navigate(route) {
                             popUpTo(Screen.Home.route) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
+                        }
+                    }
+                )
+            }
+
+            // Profile & Theme Settings
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    repository = repository,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToAchievements = {
+                        navController.navigate(Screen.Achievements.route) {
+                            popUpTo(Screen.Home.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onLoggedOut = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
                         }
                     }
                 )

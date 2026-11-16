@@ -15,9 +15,12 @@ import android.hardware.camera2.CaptureRequest
 import android.media.FaceDetector
 import android.media.Image
 import android.media.ImageReader
+import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Size
+import android.view.Surface
+import android.view.WindowManager
 import androidx.core.content.ContextCompat
 
 /**
@@ -73,7 +76,8 @@ class FrontCameraAttentionTracker(
             reader.setOnImageAvailableListener({ r ->
                 val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
                 try {
-                    val viewing = detectFaceInYPlane(image, sensorOrientation)
+                    val rotation = computeUprightRotationDegrees(sensorOrientation)
+                    val viewing = detectFaceInYPlane(image, rotation)
                     onAttentionSample(viewing)
                 } finally {
                     image.close()
@@ -116,6 +120,7 @@ class FrontCameraAttentionTracker(
             val requestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                 addTarget(surface)
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
             }
             val captureRequest = requestBuilder.build()
 
@@ -196,13 +201,38 @@ class FrontCameraAttentionTracker(
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun getDisplayRotation(): Int {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.display?.rotation ?: Surface.ROTATION_0
+            } else {
+                val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+                wm?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+            }
+        } catch (_: Exception) {
+            Surface.ROTATION_0
+        }
+    }
+
+    private fun computeUprightRotationDegrees(sensorDegrees: Int): Int {
+        val displayDegrees = when (getDisplayRotation()) {
+            Surface.ROTATION_0 -> 0
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        return (sensorDegrees + displayDegrees) % 360
+    }
+
     private fun pickLowResSize(sizes: Array<Size>): Size {
-        if (sizes.isEmpty()) return Size(320, 240)
+        if (sizes.isEmpty()) return Size(480, 360)
         return sizes
-            .filter { it.width >= 160 && it.height >= 120 }
-            .minByOrNull { kotlin.math.abs(it.width * it.height - 320 * 240) }
+            .filter { it.width >= 240 && it.height >= 180 }
+            .minByOrNull { kotlin.math.abs(it.width * it.height - 480 * 360) }
             ?: sizes.minByOrNull { it.width * it.height }
-            ?: Size(320, 240)
+            ?: Size(480, 360)
     }
 
     private fun detectFaceInYPlane(image: Image, rotationDegrees: Int): Boolean {
@@ -230,11 +260,25 @@ class FrontCameraAttentionTracker(
         }
 
         val rawBitmap = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.RGB_565)
+        if (hasFaceAtRotation(rawBitmap, rotationDegrees)) {
+            rawBitmap.recycle()
+            return true
+        }
+        // Fallback for tilted head or side-lying viewing
+        val fallback90 = hasFaceAtRotation(rawBitmap, (rotationDegrees + 90) % 360)
+        if (fallback90) {
+            rawBitmap.recycle()
+            return true
+        }
+        val fallback270 = hasFaceAtRotation(rawBitmap, (rotationDegrees + 270) % 360)
+        rawBitmap.recycle()
+        return fallback270
+    }
+
+    private fun hasFaceAtRotation(rawBitmap: Bitmap, rotationDegrees: Int): Boolean {
         val uprightBitmap = if (rotationDegrees % 360 != 0) {
             val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-            val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, false)
-            if (rotated !== rawBitmap) rawBitmap.recycle()
-            rotated
+            Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, false)
         } else {
             rawBitmap
         }
@@ -248,7 +292,7 @@ class FrontCameraAttentionTracker(
                 uprightBitmap.width - 1,
                 uprightBitmap.height
             )
-            if (even !== uprightBitmap) uprightBitmap.recycle()
+            if (uprightBitmap !== rawBitmap) uprightBitmap.recycle()
             even
         } else {
             uprightBitmap
@@ -257,7 +301,9 @@ class FrontCameraAttentionTracker(
         val faces = arrayOfNulls<FaceDetector.Face>(1)
         val count = FaceDetector(detectorBitmap.width, detectorBitmap.height, 1)
             .findFaces(detectorBitmap, faces)
-        detectorBitmap.recycle()
+        if (detectorBitmap !== rawBitmap) {
+            detectorBitmap.recycle()
+        }
         return count > 0
     }
 }

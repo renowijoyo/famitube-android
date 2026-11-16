@@ -101,9 +101,19 @@ data class LoginResponse(
     @SerializedName("message") val message: String? = null
 )
 
+data class ParentalSettingsDto(
+    @SerializedName("parentPin") val parentPin: String = "1234",
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("attentionPauseSeconds") val attentionPauseSeconds: Int = 30,
+    @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70
+)
+
 data class KidsFeedData(
     @SerializedName("channels") val channels: List<Channel> = emptyList(),
-    @SerializedName("videos") val videos: List<Video> = emptyList()
+    @SerializedName("videos") val videos: List<Video> = emptyList(),
+    @SerializedName("parentalSettings") val parentalSettings: ParentalSettingsDto? = null
 )
 
 // ==========================================

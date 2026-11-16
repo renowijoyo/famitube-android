@@ -79,7 +79,7 @@ class PlayerViewModel(
                     isViewerPresent = false,
                     isAutoPausedByInattention = true
                 )
-            } else if (awayForMs > 5000L && _uiState.value.isViewerPresent) {
+            } else if (awayForMs > 10_000L && _uiState.value.isViewerPresent) {
                 _uiState.value = _uiState.value.copy(isViewerPresent = false)
             }
         }

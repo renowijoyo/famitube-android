@@ -32,12 +32,14 @@ fun YouTubeIFramePlayer(
     videoId: String,
     controls: Boolean = true,
     startSeconds: Int = 0,
+    isPaused: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var loadedConfigKey by remember { mutableStateOf<String?>(null) }
     var customView by remember { mutableStateOf<View?>(null) }
     var customViewCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
 
@@ -75,6 +77,9 @@ fun YouTubeIFramePlayer(
 
     LaunchedEffect(videoId, startSeconds, controls, webViewRef) {
         val wv = webViewRef ?: return@LaunchedEffect
+        val key = "$videoId:$startSeconds:$controls"
+        if (loadedConfigKey == key) return@LaunchedEffect
+        loadedConfigKey = key
         val origin = "https://${wv.context.packageName}"
         val html = buildYouTubeEmbedHtml(
             videoId = videoId,
@@ -83,6 +88,22 @@ fun YouTubeIFramePlayer(
             startSeconds = startSeconds.coerceAtLeast(0)
         )
         wv.loadDataWithBaseURL(origin, html, "text/html", "utf-8", null)
+    }
+
+    LaunchedEffect(isPaused, webViewRef) {
+        val wv = webViewRef ?: return@LaunchedEffect
+        val cmd = if (isPaused) "pauseVideo" else "playVideo"
+        wv.evaluateJavascript(
+            """
+            (function() {
+              var f = document.getElementById('yt-player');
+              if (f && f.contentWindow) {
+                f.contentWindow.postMessage('{"event":"command","func":"$cmd","args":""}', '*');
+              }
+            })();
+            """.trimIndent(),
+            null
+        )
     }
 
     AndroidView(
@@ -146,6 +167,7 @@ fun YouTubeIFramePlayer(
                 }
                 webViewRef = this
                 val origin = "https://${ctx.packageName}"
+                loadedConfigKey = "$videoId:$startSeconds:$controls"
                 val html = buildYouTubeEmbedHtml(
                     videoId = videoId,
                     origin = origin,
@@ -188,6 +210,7 @@ private fun buildYouTubeEmbedHtml(
         </head>
         <body>
           <iframe
+            id="yt-player"
             src="$embedSrc"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerpolicy="strict-origin-when-cross-origin"

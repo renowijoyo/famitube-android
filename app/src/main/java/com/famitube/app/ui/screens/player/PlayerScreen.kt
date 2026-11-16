@@ -183,21 +183,23 @@ fun PlayerScreen(
                                 .fillMaxSize()
                                 .background(Color.Black)
                         ) {
-                            if (state.isAutoPausedByInattention) {
-                                InattentionPausedOverlay(
-                                    awaySeconds = state.attentionPauseSeconds,
-                                    onResumeClick = { viewModel.resumeFromInattention() },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                            if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
                                 YouTubePlayerComposable(
                                     videoId = video.youtubeVideoId,
+                                    isPaused = state.isAutoPausedByInattention,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             } else {
                                 ExoPlayerComposable(
                                     mediaUrl = video.sourceUrl,
                                     isPaused = state.isAutoPausedByInattention,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            if (state.isAutoPausedByInattention) {
+                                InattentionPausedOverlay(
+                                    awaySeconds = state.attentionPauseSeconds,
+                                    onResumeClick = { viewModel.resumeFromInattention() },
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -229,21 +231,23 @@ fun PlayerScreen(
                                     .aspectRatio(16f / 9f)
                                     .background(Color.Black)
                             ) {
-                                if (state.isAutoPausedByInattention) {
-                                    InattentionPausedOverlay(
-                                        awaySeconds = state.attentionPauseSeconds,
-                                        onResumeClick = { viewModel.resumeFromInattention() },
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                                if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
                                     YouTubePlayerComposable(
                                         videoId = video.youtubeVideoId,
+                                        isPaused = state.isAutoPausedByInattention,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 } else {
                                     ExoPlayerComposable(
                                         mediaUrl = video.sourceUrl,
                                         isPaused = state.isAutoPausedByInattention,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                if (state.isAutoPausedByInattention) {
+                                    InattentionPausedOverlay(
+                                        awaySeconds = state.attentionPauseSeconds,
+                                        onResumeClick = { viewModel.resumeFromInattention() },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -397,12 +401,14 @@ fun PlayerScreen(
 @Composable
 fun YouTubePlayerComposable(
     videoId: String,
+    isPaused: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     YouTubeIFramePlayer(
         videoId = videoId,
         controls = true,
         startSeconds = 0,
+        isPaused = isPaused,
         modifier = modifier
     )
 }
@@ -518,7 +524,8 @@ private fun InattentionPausedOverlay(
 ) {
     Column(
         modifier = modifier
-            .background(Color(0xFF0B1120))
+            .background(Color(0xE60B1120))
+            .clickable(onClick = onResumeClick)
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

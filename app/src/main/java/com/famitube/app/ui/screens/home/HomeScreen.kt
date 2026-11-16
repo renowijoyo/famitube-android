@@ -43,6 +43,7 @@ fun HomeScreen(
     onSearchClick: () -> Unit,
     onNavigateToParental: () -> Unit,
     onNavigateToBadges: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     onNavigateTab: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -61,6 +62,7 @@ fun HomeScreen(
                 remainingMinutes = state.remainingMinutes,
                 starBalance = starBalance,
                 onStarsClick = onNavigateToBadges,
+                onProfileClick = onNavigateToProfile,
                 onSearchClick = onSearchClick,
                 onParentalClick = { showParentalGate = true },
                 showSearchButton = !isSimpleMode

@@ -126,6 +126,7 @@ class FamiTubeRepository(
             if (isLoggedIn() && category == null && channelId == null && search == null && featured == null) {
                 val feedRes = api.getKidsFeed()
                 if (feedRes.success && feedRes.data != null) {
+                    feedRes.data.parentalSettings?.let { applyRemoteParentalSettings(it) }
                     return Result.success(feedRes.data.videos)
                 }
             }
@@ -297,6 +298,19 @@ class FamiTubeRepository(
             achievementManager?.recordFavoritesCount(preferences.getFavoriteIds().size)
         }
         return isNowFav
+    }
+
+    private fun applyRemoteParentalSettings(remote: ParentalSettingsDto) {
+        if (remote.parentPin.length == 4 && remote.parentPin.all { it.isDigit() }) {
+            preferences.parentPin = remote.parentPin
+        }
+        preferences.dailyLimitMinutes = remote.dailyLimitMinutes.coerceIn(5, 480)
+        if (remote.ageRating.isNotBlank()) {
+            preferences.selectedAgeFilter = remote.ageRating
+        }
+        preferences.attentionTrackingEnabled = remote.attentionTrackingEnabled
+        preferences.attentionPauseSeconds = remote.attentionPauseSeconds.coerceIn(5, 300)
+        preferences.attentionMinWatchPercent = remote.attentionMinWatchPercent.coerceIn(10, 100)
     }
 
     fun getPreferences(): ParentalPreferences = preferences
