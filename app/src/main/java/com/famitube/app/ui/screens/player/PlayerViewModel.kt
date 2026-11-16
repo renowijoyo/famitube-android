@@ -19,6 +19,11 @@ data class PlayerUiState(
     val isFavorite: Boolean = false,
     val isLimitExceeded: Boolean = false,
     val remainingMinutes: Int = 45,
+    val isAttentionTrackingEnabled: Boolean = true,
+    val hasCameraPermission: Boolean = false,
+    val isViewerPresent: Boolean = true,
+    val viewedSeconds: Int = 0,
+    val unwatchedSeconds: Int = 0,
     val errorMessage: String? = null
 )
 
@@ -31,9 +36,31 @@ class PlayerViewModel(
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
+    private var lastFaceSeenAtMs: Long = System.currentTimeMillis()
 
     init {
+        _uiState.value = _uiState.value.copy(
+            isAttentionTrackingEnabled = repository.getPreferences().attentionTrackingEnabled
+        )
         loadVideo()
+    }
+
+    fun updateCameraPermission(granted: Boolean) {
+        _uiState.value = _uiState.value.copy(hasCameraPermission = granted)
+    }
+
+    fun onAttentionSample(isViewing: Boolean) {
+        if (isViewing) {
+            lastFaceSeenAtMs = System.currentTimeMillis()
+            if (!_uiState.value.isViewerPresent) {
+                _uiState.value = _uiState.value.copy(isViewerPresent = true)
+            }
+        } else {
+            val awayForMs = System.currentTimeMillis() - lastFaceSeenAtMs
+            if (awayForMs > 6000L && _uiState.value.isViewerPresent) {
+                _uiState.value = _uiState.value.copy(isViewerPresent = false)
+            }
+        }
     }
 
     private fun loadVideo() {
@@ -113,9 +140,19 @@ class PlayerViewModel(
                 val remaining = repository.getPreferences().getRemainingMinutes()
                 val isExceeded = repository.getPreferences().isDailyLimitExceeded()
 
+                val trackingActive = _uiState.value.isAttentionTrackingEnabled && _uiState.value.hasCameraPermission
+                val viewingNow = if (trackingActive) {
+                    (System.currentTimeMillis() - lastFaceSeenAtMs) <= 6000L
+                } else {
+                    true
+                }
+
                 _uiState.value = _uiState.value.copy(
                     remainingMinutes = remaining,
-                    isLimitExceeded = isExceeded
+                    isLimitExceeded = isExceeded,
+                    isViewerPresent = viewingNow,
+                    viewedSeconds = if (viewingNow) _uiState.value.viewedSeconds + 5 else _uiState.value.viewedSeconds,
+                    unwatchedSeconds = if (!viewingNow) _uiState.value.unwatchedSeconds + 5 else _uiState.value.unwatchedSeconds
                 )
 
                 if (isExceeded) {

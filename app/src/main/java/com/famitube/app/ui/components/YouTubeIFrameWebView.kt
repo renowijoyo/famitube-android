@@ -1,8 +1,13 @@
 package com.famitube.app.ui.components
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.net.Uri
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -12,8 +17,12 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
@@ -26,7 +35,29 @@ fun YouTubeIFramePlayer(
     modifier: Modifier = Modifier
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var customView by remember { mutableStateOf<View?>(null) }
+    var customViewCallback by remember { mutableStateOf<WebChromeClient.CustomViewCallback?>(null) }
+
+    fun exitFullscreen() {
+        val act = activity ?: return
+        val decor = act.window.decorView as? FrameLayout
+        customView?.let { decor?.removeView(it) }
+        customView = null
+        customViewCallback?.onCustomViewHidden()
+        customViewCallback = null
+        act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        WindowCompat.getInsetsController(act.window, act.window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exitFullscreen()
+        }
+    }
 
     DisposableEffect(lifecycleOwner, webViewRef) {
         val observer = LifecycleEventObserver { _, event ->
@@ -70,7 +101,34 @@ fun YouTubeIFramePlayer(
                     useWideViewPort = true
                     mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                 }
-                webChromeClient = WebChromeClient()
+                webChromeClient = object : WebChromeClient() {
+                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                        val act = activity ?: return
+                        if (customView != null) {
+                            callback?.onCustomViewHidden()
+                            return
+                        }
+                        val decor = act.window.decorView as? FrameLayout ?: return
+                        customView = view
+                        customViewCallback = callback
+                        decor.addView(
+                            view,
+                            FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                        )
+                        act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        val controller = WindowCompat.getInsetsController(act.window, decor)
+                        controller.systemBarsBehavior =
+                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        controller.hide(WindowInsetsCompat.Type.systemBars())
+                    }
+
+                    override fun onHideCustomView() {
+                        exitFullscreen()
+                    }
+                }
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(
                         view: WebView?,
@@ -116,7 +174,7 @@ private fun buildYouTubeEmbedHtml(
     val safeOrigin = Uri.encode(origin)
     val embedSrc =
         "https://www.youtube.com/embed/$safeVideoId" +
-            "?autoplay=1&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3" +
+            "?autoplay=1&playsinline=1&fs=1&rel=0&modestbranding=1&iv_load_policy=3" +
             "&controls=$controls&start=$startSeconds&enablejsapi=1&origin=$safeOrigin"
     return """
         <!DOCTYPE html>
@@ -138,4 +196,10 @@ private fun buildYouTubeEmbedHtml(
         </body>
         </html>
     """.trimIndent()
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

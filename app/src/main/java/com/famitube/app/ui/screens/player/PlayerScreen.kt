@@ -1,9 +1,22 @@
 ﻿package com.famitube.app.ui.screens.player
 
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +29,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,22 +64,98 @@ fun PlayerScreen(
     onRelatedVideoClick: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val activity = remember(context) { context.findPlayerActivity() }
+    var isFullscreen by remember { mutableStateOf(false) }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.updateCameraPermission(granted)
+    }
+
+    LaunchedEffect(state.isAttentionTrackingEnabled) {
+        if (state.isAttentionTrackingEnabled) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+            viewModel.updateCameraPermission(granted)
+            if (!granted) {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+
+    DisposableEffect(state.isAttentionTrackingEnabled, state.hasCameraPermission, state.isLimitExceeded) {
+        val tracker = if (state.isAttentionTrackingEnabled && state.hasCameraPermission && !state.isLimitExceeded) {
+            FrontCameraAttentionTracker(context) { isViewing ->
+                viewModel.onAttentionSample(isViewing)
+            }.also { it.start() }
+        } else {
+            null
+        }
+        onDispose {
+            tracker?.stop()
+        }
+    }
+
+    LaunchedEffect(isFullscreen) {
+        val act = activity ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(act.window, act.window.decorView)
+        if (isFullscreen) {
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            activity?.let { act ->
+                act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                WindowCompat.getInsetsController(act.window, act.window.decorView)
+                    .show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
+    BackHandler(enabled = isFullscreen) {
+        isFullscreen = false
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(state.video?.title ?: "FamiTube Player", maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
-            )
+            if (!isFullscreen) {
+                TopAppBar(
+                    title = { Text(state.video?.title ?: "FamiTube Player", maxLines = 1) },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        if (state.video != null && !state.isLimitExceeded) {
+                            IconButton(onClick = { isFullscreen = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Fullscreen,
+                                    contentDescription = "Fullscreen",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
+                )
+            }
         }
     ) { paddingValues ->
         Box(
@@ -86,7 +177,40 @@ fun PlayerScreen(
                 state.video != null -> {
                     val video = state.video!!
 
-                    LazyColumn(
+                    if (isFullscreen) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black)
+                        ) {
+                            if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                                YouTubePlayerComposable(
+                                    videoId = video.youtubeVideoId,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                ExoPlayerComposable(
+                                    mediaUrl = video.sourceUrl,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            IconButton(
+                                onClick = { isFullscreen = false },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(12.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0x88000000))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FullscreenExit,
+                                    contentDescription = "Exit Fullscreen",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
@@ -125,6 +249,44 @@ fun PlayerScreen(
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold
                                 )
+
+                                if (state.isAttentionTrackingEnabled) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    val statusColor = when {
+                                        !state.hasCameraPermission -> Color(0xFF94A3B8)
+                                        state.isViewerPresent -> Color(0xFF06D6A0)
+                                        else -> Color(0xFFFFB703)
+                                    }
+                                    val statusLabel = when {
+                                        !state.hasCameraPermission -> "📷 Camera permission needed for attention check"
+                                        state.isViewerPresent -> "👀 Actively Viewing"
+                                        else -> "😶 Not Viewing (Playing Unwatched)"
+                                    }
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(statusColor.copy(alpha = 0.14f))
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = statusLabel,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = statusColor
+                                        )
+                                        if (state.hasCameraPermission) {
+                                            Text(
+                                                text = "Viewed: ${state.viewedSeconds}s • Away: ${state.unwatchedSeconds}s",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFFCBD5E1)
+                                            )
+                                        }
+                                    }
+                                }
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -207,6 +369,7 @@ fun PlayerScreen(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }
@@ -317,4 +480,10 @@ fun ScreenTimeLimitExceededView(
             Text("Back to Explore")
         }
     }
+}
+
+private tailrec fun Context.findPlayerActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findPlayerActivity()
+    else -> null
 }

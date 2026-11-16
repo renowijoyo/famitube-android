@@ -44,6 +44,7 @@ fun ParentalSettingsScreen(
     val scope = rememberCoroutineScope()
 
     var dailyLimit by remember { mutableIntStateOf(prefs.dailyLimitMinutes) }
+    var attentionTracking by remember { mutableStateOf(prefs.attentionTrackingEnabled) }
     var selectedAge by remember { mutableStateOf(prefs.selectedAgeFilter) }
     var newPin by remember { mutableStateOf(prefs.parentPin) }
     var customStarsInput by remember { mutableStateOf("") }
@@ -144,6 +145,35 @@ fun ParentalSettingsScreen(
                     ) {
                         Text("Reset Today's Time")
                     }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Camera Attention Check",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Tracks on-device whether the video is being watched vs. playing unattended.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = attentionTracking,
+                        onCheckedChange = { enabled ->
+                            attentionTracking = enabled
+                            prefs.attentionTrackingEnabled = enabled
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PinkPrimary)
+                    )
                 }
             }
 
