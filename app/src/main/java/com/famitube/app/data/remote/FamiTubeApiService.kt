@@ -31,7 +31,8 @@ interface FamiTubeApiService {
         @Query("includeTags") includeTags: String? = null,
         @Query("anyTags") anyTags: String? = null,
         @Query("excludeTags") excludeTags: String? = null,
-        @Query("preset") preset: String? = null
+        @Query("preset") preset: String? = null,
+        @Query("ageRating") ageRating: String? = null
     ): ApiResponse<KidsFeedData>
 
     @GET("videos")
@@ -56,11 +57,14 @@ interface FamiTubeApiService {
     suspend fun getCategories(): ApiResponse<List<Category>>
 
     @GET("channels")
-    suspend fun getChannels(): ApiResponse<List<Channel>>
+    suspend fun getChannels(
+        @Query("ageRating") ageRating: String? = null
+    ): ApiResponse<List<Channel>>
 
     @GET("channels/{id}")
     suspend fun getChannelDetail(
-        @Path("id") id: String
+        @Path("id") id: String,
+        @Query("ageRating") ageRating: String? = null
     ): ApiResponse<ChannelDetailResponse>
 
     @GET("channels/{id}/live")

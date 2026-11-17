@@ -17,6 +17,7 @@ data class Channel(
     @SerializedName("avatarUrl") val avatarUrl: String,
     @SerializedName("bannerUrl") val bannerUrl: String? = null,
     @SerializedName("category") val category: String,
+    @SerializedName("ageRating") val ageRating: String = "ALL",
     @SerializedName("isVerified") val isVerified: Boolean = true,
     @SerializedName("channelType") val channelType: ChannelType = ChannelType.ON_DEMAND,
     @SerializedName("videoCount") val videoCount: Int = 0,

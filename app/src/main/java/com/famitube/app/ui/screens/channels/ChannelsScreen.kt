@@ -38,10 +38,12 @@ fun ChannelsScreen(
 ) {
     var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(ageFilter) {
         scope.launch {
+            isLoading = true
             val res = repository.getChannels()
             channels = res.getOrDefault(emptyList())
             isLoading = false
@@ -156,7 +158,24 @@ fun ChannelGridCard(
                 color = PinkPrimary
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            val (ageLabel, ageColor) = formatChannelAgeBadge(channel.ageRating)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(ageColor.copy(alpha = 0.16f))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = ageLabel,
+                    color = ageColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = "${channel.videoCount} safe videos",
@@ -166,5 +185,14 @@ fun ChannelGridCard(
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+internal fun formatChannelAgeBadge(ageRating: String?): Pair<String, Color> {
+    return when (ageRating?.uppercase()) {
+        "TODDLER" -> "Ages 2-4" to Color(0xFFFFB703)
+        "YOUNG_KIDS" -> "Ages 5-8" to Color(0xFF06D6A0)
+        "OLDER_KIDS" -> "Ages 9-12" to Color(0xFF4CC9F0)
+        else -> "All Ages" to Color(0xFFA78BFA)
     }
 }

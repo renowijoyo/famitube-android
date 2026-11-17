@@ -183,14 +183,25 @@ class FamiTubeRepository(
     }
 
     suspend fun getChannels(): Result<List<Channel>> {
+        val ageFilter = preferences.selectedAgeFilter.takeIf { it != "ALL" && it.isNotBlank() }
         return try {
             if (isLoggedIn()) {
-                val feedRes = api.getKidsFeed()
+                val feedRes = api.getKidsFeed(ageRating = ageFilter)
                 if (feedRes.success && feedRes.data != null) {
-                    return Result.success(feedRes.data.channels)
+                    feedRes.data.parentalSettings?.let { applyRemoteParentalSettings(it) }
+                    val effectiveFilter = preferences.selectedAgeFilter.takeIf { it != "ALL" && it.isNotBlank() }
+                    val filtered = if (effectiveFilter == null) {
+                        feedRes.data.channels
+                    } else {
+                        feedRes.data.channels.filter {
+                            it.ageRating.equals(effectiveFilter, ignoreCase = true) ||
+                                it.ageRating.equals("ALL", ignoreCase = true)
+                        }
+                    }
+                    return Result.success(filtered)
                 }
             }
-            val res = api.getChannels()
+            val res = api.getChannels(ageRating = ageFilter)
             if (res.success && res.data != null) {
                 Result.success(res.data)
             } else {
@@ -202,8 +213,9 @@ class FamiTubeRepository(
     }
 
     suspend fun getChannelDetail(id: String): Result<ChannelDetailResponse> {
+        val ageFilter = preferences.selectedAgeFilter.takeIf { it != "ALL" && it.isNotBlank() }
         return try {
-            val res = api.getChannelDetail(id)
+            val res = api.getChannelDetail(id, ageRating = ageFilter)
             if (res.success && res.data != null) {
                 achievementManager?.recordChannelVisited(id)
                 Result.success(res.data)

@@ -38,6 +38,7 @@ fun ChannelDetailScreen(
     var detail by remember { mutableStateOf<ChannelDetailResponse?>(null) }
     var lockedAccess by remember { mutableStateOf<ChannelAccessData?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
     val scope = rememberCoroutineScope()
 
     fun loadChannel() {
@@ -57,7 +58,7 @@ fun ChannelDetailScreen(
         }
     }
 
-    LaunchedEffect(channelId) {
+    LaunchedEffect(channelId, ageFilter) {
         loadChannel()
     }
 
@@ -138,8 +139,9 @@ fun ChannelDetailScreen(
                                             )
                                         }
                                     }
+                                    val (ageLabel, _) = formatChannelAgeBadge(channel.ageRating)
                                     Text(
-                                        text = "${channel.category} â€¢ ${videos.size} videos",
+                                        text = "${channel.category} • $ageLabel • ${videos.size} videos",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = PinkPrimary
                                     )
