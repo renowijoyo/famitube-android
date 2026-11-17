@@ -17,8 +17,16 @@ interface FamiTubeApiService {
     @GET("auth/me")
     suspend fun getAuthMe(): Response<AuthMeResponse>
 
+    @GET("tags/taxonomy")
+    suspend fun getTagTaxonomy(): ApiResponse<TagTaxonomyData>
+
     @GET("kids/feed")
-    suspend fun getKidsFeed(): ApiResponse<KidsFeedData>
+    suspend fun getKidsFeed(
+        @Query("includeTags") includeTags: String? = null,
+        @Query("anyTags") anyTags: String? = null,
+        @Query("excludeTags") excludeTags: String? = null,
+        @Query("preset") preset: String? = null
+    ): ApiResponse<KidsFeedData>
 
     @GET("videos")
     suspend fun getVideos(
@@ -26,7 +34,11 @@ interface FamiTubeApiService {
         @Query("channelId") channelId: String? = null,
         @Query("ageRating") ageRating: String? = null,
         @Query("search") search: String? = null,
-        @Query("featured") featured: Boolean? = null
+        @Query("featured") featured: Boolean? = null,
+        @Query("includeTags") includeTags: String? = null,
+        @Query("anyTags") anyTags: String? = null,
+        @Query("excludeTags") excludeTags: String? = null,
+        @Query("preset") preset: String? = null
     ): ApiResponse<List<Video>>
 
     @GET("videos/{id}")

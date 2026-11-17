@@ -99,11 +99,17 @@ fun FamiTubeTopBar(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
+                val timeText = if (remainingMinutes < 0) "No limit" else "${remainingMinutes}m left"
+                val timeColor = when {
+                    remainingMinutes < 0 -> Color(0xFF059669)
+                    remainingMinutes < 10 -> Color(0xFFDC2626)
+                    else -> Color(0xFF0284C7)
+                }
                 Text(
-                    text = "${remainingMinutes}m left",
+                    text = timeText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (remainingMinutes < 10) Color(0xFFDC2626) else Color(0xFF0284C7)
+                    color = timeColor
                 )
             }
 

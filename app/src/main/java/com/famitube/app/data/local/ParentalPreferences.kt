@@ -114,11 +114,13 @@ class ParentalPreferences(context: Context) {
     }
 
     fun isDailyLimitExceeded(): Boolean {
+        if (dailyLimitMinutes <= 0) return false
         val usedMins = getUsedSecondsToday() / 60
         return usedMins >= dailyLimitMinutes
     }
 
     fun getRemainingMinutes(): Int {
+        if (dailyLimitMinutes <= 0) return -1
         val remaining = dailyLimitMinutes - (getUsedSecondsToday() / 60)
         return if (remaining < 0) 0 else remaining
     }

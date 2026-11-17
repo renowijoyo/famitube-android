@@ -44,6 +44,8 @@ fun ParentalSettingsScreen(
     val scope = rememberCoroutineScope()
 
     var dailyLimit by remember { mutableIntStateOf(prefs.dailyLimitMinutes) }
+    var limitHours by remember { mutableIntStateOf((prefs.dailyLimitMinutes / 60).coerceIn(0, 12)) }
+    var limitMinutes by remember { mutableIntStateOf((prefs.dailyLimitMinutes % 60).coerceIn(0, 59)) }
     var attentionTracking by remember { mutableStateOf(prefs.attentionTrackingEnabled) }
     var attentionPauseSeconds by remember { mutableIntStateOf(prefs.attentionPauseSeconds) }
     var attentionMinWatchPercent by remember { mutableIntStateOf(prefs.attentionMinWatchPercent) }
@@ -61,8 +63,6 @@ fun ParentalSettingsScreen(
         "YOUNG_KIDS" to "Young Kids (Ages 5-7)",
         "OLDER_KIDS" to "Explorers / Tweens (Ages 8-11)"
     )
-
-    val limitOptions = listOf(15, 30, 45, 60, 90, 120)
 
     Scaffold(
         topBar = {
@@ -92,38 +92,75 @@ fun ParentalSettingsScreen(
             // 1. Screen Time Section
             SettingsSectionCard(title = "Daily Screen Time Limit") {
                 Text(
-                    text = "Control how long your child can watch videos each day.",
+                    text = "Set hours and minutes for daily watch time (set 0h 0m for no limit).",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
+                fun applyTimeLimit(h: Int, m: Int) {
+                    limitHours = h.coerceIn(0, 12)
+                    limitMinutes = m.coerceIn(0, 59)
+                    val total = limitHours * 60 + limitMinutes
+                    dailyLimit = total
+                    prefs.dailyLimitMinutes = total
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    limitOptions.forEach { mins ->
-                        val isSel = dailyLimit == mins
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSel) PinkPrimary else SurfaceLightDark)
-                                .clickable {
-                                    dailyLimit = mins
-                                    prefs.dailyLimitMinutes = mins
-                                    Toast.makeText(context, "Limit set to $mins min", Toast.LENGTH_SHORT).show()
-                                }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "${mins}m",
-                                color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
+                    TimeUnitPickerCard(
+                        label = "Hours",
+                        value = limitHours,
+                        unitSuffix = "h",
+                        onDecrement = { applyTimeLimit((limitHours - 1).coerceAtLeast(0), limitMinutes) },
+                        onIncrement = { applyTimeLimit((limitHours + 1).coerceAtMost(12), limitMinutes) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    TimeUnitPickerCard(
+                        label = "Minutes",
+                        value = limitMinutes,
+                        unitSuffix = "m",
+                        onDecrement = {
+                            val nextM = if (limitMinutes - 5 < 0) 55 else limitMinutes - 5
+                            applyTimeLimit(limitHours, nextM)
+                        },
+                        onIncrement = {
+                            val nextM = if (limitMinutes + 5 >= 60) 0 else limitMinutes + 5
+                            applyTimeLimit(limitHours, nextM)
+                        },
+                        onStepSmallDecrement = { applyTimeLimit(limitHours, (limitMinutes - 1).coerceAtLeast(0)) },
+                        onStepSmallIncrement = { applyTimeLimit(limitHours, (limitMinutes + 1).coerceAtMost(59)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val summaryText = if (dailyLimit <= 0) {
+                        "Current limit: No Limit"
+                    } else {
+                        "Current limit: ${limitHours}h ${limitMinutes}m ($dailyLimit mins)"
+                    }
+                    Text(
+                        text = summaryText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PinkPrimary
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            applyTimeLimit(0, 0)
+                            Toast.makeText(context, "Daily watch limit set to No Limit", Toast.LENGTH_SHORT).show()
                         }
+                    ) {
+                        Text("No Limit (0)")
                     }
                 }
 
@@ -497,5 +534,80 @@ fun SettingsSectionCard(
             modifier = Modifier.padding(16.dp),
             content = content
         )
+    }
+}
+
+@Composable
+private fun TimeUnitPickerCard(
+    label: String,
+    value: Int,
+    unitSuffix: String,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+    onStepSmallDecrement: (() -> Unit)? = null,
+    onStepSmallIncrement: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            FilledTonalIconButton(
+                onClick = onDecrement,
+                modifier = Modifier.size(34.dp)
+            ) {
+                Text("-", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            }
+            Text(
+                text = "${value}$unitSuffix",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            FilledTonalIconButton(
+                onClick = onIncrement,
+                modifier = Modifier.size(34.dp)
+            ) {
+                Text("+", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            }
+        }
+        if (onStepSmallDecrement != null && onStepSmallIncrement != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "-1m",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PinkPrimary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onStepSmallDecrement)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+                Text(
+                    text = "+1m",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PinkPrimary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onStepSmallIncrement)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
     }
 }
