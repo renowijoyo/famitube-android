@@ -86,13 +86,35 @@ data class LoginRequest(
     @SerializedName("loginType") val loginType: String = "CHILD"
 )
 
+data class PlanEntitlementsDto(
+    @SerializedName("plan") val plan: String = "FREE",
+    @SerializedName("isPremium") val isPremium: Boolean = false,
+    @SerializedName("planExpiresAt") val planExpiresAt: String? = null,
+    @SerializedName("maxChildren") val maxChildren: Int? = 1,
+    @SerializedName("maxQuizChannels") val maxQuizChannels: Int? = 1,
+    @SerializedName("maxPlaylists") val maxPlaylists: Int? = 1,
+    @SerializedName("maxActivePresets") val maxActivePresets: Int? = 1,
+    @SerializedName("allowCustomTagRules") val allowCustomTagRules: Boolean = false,
+    @SerializedName("allowPrivateChannels") val allowPrivateChannels: Boolean = false,
+    @SerializedName("allowAttentionTracking") val allowAttentionTracking: Boolean = false,
+    @SerializedName("allowWeeklyInsights") val allowWeeklyInsights: Boolean = false,
+    @SerializedName("dailySearchRequestLimit") val dailySearchRequestLimit: Int? = 3
+)
+
+data class UpdatePlanRequest(
+    @SerializedName("plan") val plan: String,
+    @SerializedName("durationDays") val durationDays: Int? = null
+)
+
 data class AuthUser(
     @SerializedName("id") val id: String,
     @SerializedName("email") val email: String,
     @SerializedName("name") val name: String,
     @SerializedName("role") val role: String = "CHILD",
     @SerializedName("parentId") val parentId: String? = null,
-    @SerializedName("ageRating") val ageRating: String? = null
+    @SerializedName("ageRating") val ageRating: String? = null,
+    @SerializedName("plan") val plan: String = "FREE",
+    @SerializedName("entitlements") val entitlements: PlanEntitlementsDto? = null
 )
 
 data class LoginResponse(
@@ -114,6 +136,7 @@ data class ParentalSettingsDto(
 data class KidsFeedData(
     @SerializedName("channels") val channels: List<Channel> = emptyList(),
     @SerializedName("videos") val videos: List<Video> = emptyList(),
+    @SerializedName("entitlements") val entitlements: PlanEntitlementsDto? = null,
     @SerializedName("parentalSettings") val parentalSettings: ParentalSettingsDto? = null
 )
 

@@ -17,6 +17,12 @@ interface FamiTubeApiService {
     @GET("auth/me")
     suspend fun getAuthMe(): Response<AuthMeResponse>
 
+    @GET("subscription/entitlements")
+    suspend fun getEntitlements(): Response<ApiResponse<PlanEntitlementsDto>>
+
+    @POST("subscription/plan")
+    suspend fun updateSubscriptionPlan(@Body body: UpdatePlanRequest): Response<ApiResponse<PlanEntitlementsDto>>
+
     @GET("tags/taxonomy")
     suspend fun getTagTaxonomy(): ApiResponse<TagTaxonomyData>
 
