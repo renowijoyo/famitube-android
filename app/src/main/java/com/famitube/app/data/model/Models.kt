@@ -301,31 +301,3 @@ data class AddKidPlaylistItemRequest(
     @SerializedName("sourceType") val sourceType: String = "YOUTUBE",
     @SerializedName("sourceUrl") val sourceUrl: String
 )
-
-data class TagDefinitionDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("label") val label: String,
-    @SerializedName("description") val description: String? = null
-)
-
-data class TagCategoryDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("label") val label: String,
-    @SerializedName("description") val description: String = "",
-    @SerializedName("multiSelect") val multiSelect: Boolean = true,
-    @SerializedName("tags") val tags: List<TagDefinitionDto> = emptyList()
-)
-
-data class ParentFilterPresetDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("label") val label: String,
-    @SerializedName("description") val description: String = "",
-    @SerializedName("includeAllTags") val includeAllTags: List<String> = emptyList(),
-    @SerializedName("includeAnyTags") val includeAnyTags: List<String> = emptyList(),
-    @SerializedName("excludeTags") val excludeTags: List<String> = emptyList()
-)
-
-data class TagTaxonomyData(
-    @SerializedName("categories") val categories: List<TagCategoryDto> = emptyList(),
-    @SerializedName("presets") val presets: List<ParentFilterPresetDto> = emptyList()
-)
