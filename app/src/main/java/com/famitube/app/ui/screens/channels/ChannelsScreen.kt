@@ -178,6 +178,17 @@ fun ChannelGridCard(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
+                text = "by ${channel.ownerName ?: "Team FamiTube"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
                 text = "${channel.videoCount} safe videos",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

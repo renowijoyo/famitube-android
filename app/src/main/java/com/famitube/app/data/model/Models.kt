@@ -21,6 +21,8 @@ data class Channel(
     @SerializedName("isVerified") val isVerified: Boolean = true,
     @SerializedName("channelType") val channelType: ChannelType = ChannelType.ON_DEMAND,
     @SerializedName("videoCount") val videoCount: Int = 0,
+    @SerializedName("ownerId") val ownerId: String? = null,
+    @SerializedName("ownerName") val ownerName: String? = null,
     @SerializedName("defaultTags") val defaultTags: List<String> = emptyList()
 )
 

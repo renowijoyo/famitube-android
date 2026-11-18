@@ -145,6 +145,11 @@ fun ChannelDetailScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = PinkPrimary
                                     )
+                                    Text(
+                                        text = "Curated by ${channel.ownerName ?: "Team FamiTube"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
 
