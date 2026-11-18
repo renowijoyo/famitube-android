@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PlayCircleFilled
@@ -42,6 +43,7 @@ fun LoginScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isParentLogin by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -94,7 +96,7 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Sign in with your email / Gmail account",
+                text = if (isParentLogin) "Parent / Curator Sign In" else "Sign in with your email / Gmail account",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -113,13 +115,20 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(BlueSecondary.copy(alpha = 0.1f))
+                        .background(
+                            if (isParentLogin) PinkPrimary.copy(alpha = 0.1f)
+                            else BlueSecondary.copy(alpha = 0.1f)
+                        )
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = "Only email/Gmail accounts previously registered by a parent or guardian can sign in.",
+                        text = if (isParentLogin) {
+                            "Sign in with your parent account to manage children, approve video requests, and adjust family controls."
+                        } else {
+                            "Only email/Gmail accounts previously registered by a parent or guardian can sign in."
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = BlueSecondary
+                        color = if (isParentLogin) PinkPrimary else BlueSecondary
                     )
                 }
 
@@ -128,8 +137,8 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it; errorMessage = null },
-                    label = { Text("Child Email / Gmail") },
-                    placeholder = { Text("kid@gmail.com") },
+                    label = { Text(if (isParentLogin) "Parent Email / Gmail" else "Child Email / Gmail") },
+                    placeholder = { Text(if (isParentLogin) "parent@gmail.com" else "kid@gmail.com") },
                     leadingIcon = { Icon(Icons.Rounded.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     singleLine = true,
@@ -169,7 +178,11 @@ fun LoginScreen(
                         isLoading = true
                         errorMessage = null
                         scope.launch {
-                            val result = repository.loginChild(email, password)
+                            val result = if (isParentLogin) {
+                                repository.loginParent(email, password)
+                            } else {
+                                repository.loginChild(email, password)
+                            }
                             isLoading = false
                             result.onSuccess {
                                 onLoginSuccess()
@@ -235,6 +248,32 @@ fun LoginScreen(
                         text = "Continue with Google",
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        isParentLogin = !isParentLogin
+                        errorMessage = null
+                    },
+                    enabled = !isLoading,
+                    border = BorderStroke(1.dp, PinkPrimary.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = PinkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isParentLogin) "Back to Child Login" else "I'm a Parent — Parent Login",
+                        fontWeight = FontWeight.SemiBold,
+                        color = PinkPrimary
                     )
                 }
             }

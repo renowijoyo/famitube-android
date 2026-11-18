@@ -44,6 +44,7 @@ class FamiTubeRepository(
                 preferences.authToken = token
                 preferences.loggedInEmail = body.user.email
                 preferences.loggedInName = body.user.name
+                preferences.loggedInRole = body.user.role
                 if (!body.user.ageRating.isNullOrBlank()) {
                     preferences.selectedAgeFilter = body.user.ageRating
                 }
@@ -65,13 +66,25 @@ class FamiTubeRepository(
 
     fun isLoggedIn(): Boolean = preferences.authToken.isNotBlank()
 
-    suspend fun loginChild(email: String, password: String): Result<AuthUser> {
+    fun isParentMode(): Boolean = isLoggedIn() && preferences.isParentAccount()
+
+    suspend fun loginChild(email: String, password: String): Result<AuthUser> =
+        loginWithType(email, password, "CHILD")
+
+    suspend fun loginParent(email: String, password: String): Result<AuthUser> =
+        loginWithType(email, password, "PARENT")
+
+    private suspend fun loginWithType(
+        email: String,
+        password: String,
+        loginType: String
+    ): Result<AuthUser> {
         return try {
             val response = api.login(
                 LoginRequest(
                     email = email.trim().lowercase(),
                     password = password,
-                    loginType = "CHILD"
+                    loginType = loginType
                 )
             )
             if (response.isSuccessful) {
@@ -80,6 +93,7 @@ class FamiTubeRepository(
                     preferences.authToken = body.token
                     preferences.loggedInEmail = body.user.email
                     preferences.loggedInName = body.user.name
+                    preferences.loggedInRole = body.user.role
                     if (!body.user.ageRating.isNullOrBlank()) {
                         preferences.selectedAgeFilter = body.user.ageRating
                     }
@@ -97,12 +111,12 @@ class FamiTubeRepository(
                 } catch (_: Exception) {
                     null
                 }
-                Result.failure(
-                    Exception(
-                        errMsg
-                            ?: "This email/Gmail is not registered as a child account by a parent/guardian."
-                    )
-                )
+                val fallback = if (loginType == "PARENT") {
+                    "Invalid parent email or password."
+                } else {
+                    "This email/Gmail is not registered as a child account by a parent/guardian."
+                }
+                Result.failure(Exception(errMsg ?: fallback))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -362,54 +376,6 @@ class FamiTubeRepository(
     }
 
     // ==========================================
-    // CHANNEL QUIZ WALL
-    // ==========================================
-
-    suspend fun getChannelAccess(channelId: String): Result<ChannelAccessData> {
-        if (!isLoggedIn()) return Result.success(ChannelAccessData(unlocked = true, quizRequired = false))
-        return try {
-            val res = api.getChannelAccess(channelId)
-            if (res.success && res.data != null) {
-                Result.success(res.data)
-            } else {
-                Result.failure(Exception(res.message ?: "Failed to check channel access"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun submitChannelQuizAnswer(
-        channelId: String,
-        questionId: String,
-        selectedIndex: Int
-    ): Result<QuizAnswerData> {
-        return try {
-            val response = api.submitChannelQuizAnswer(
-                channelId = channelId,
-                body = QuizAnswerRequest(questionId = questionId, selectedIndex = selectedIndex)
-            )
-            val body = response.body()
-            if (body?.data != null) {
-                if (body.data.unlocked) {
-                    achievementManager?.recordQuizPassed()
-                }
-                Result.success(body.data)
-            } else {
-                val errBody = response.errorBody()?.string()
-                val parsed = try {
-                    Gson().fromJson(errBody, ApiResponse::class.java)
-                } catch (_: Exception) {
-                    null
-                }
-                Result.failure(Exception(parsed?.message ?: body?.message ?: "Failed to submit answer"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    // ==========================================
     // KID YOUTUBE SEARCH, HISTORY & PLAYLISTS
     // ==========================================
 
@@ -518,6 +484,89 @@ class FamiTubeRepository(
             val res = api.removeKidPlaylistItem(playlistId, itemKey)
             if (res.success && res.data != null) Result.success(res.data)
             else Result.failure(Exception(res.message ?: "Failed to remove item"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ==========================================
+    // PARENT MODE
+    // ==========================================
+
+    suspend fun getParentChildren(): Result<List<ParentChildDto>> {
+        return try {
+            val res = api.getParentChildren()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load child accounts"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun registerParentChild(
+        email: String,
+        name: String,
+        password: String,
+        ageRating: String
+    ): Result<ParentChildDto> {
+        return try {
+            val response = api.registerParentChild(
+                RegisterChildRequest(
+                    email = email.trim().lowercase(),
+                    name = name.trim(),
+                    password = password,
+                    ageRating = ageRating
+                )
+            )
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                Result.success(body.data)
+            } else {
+                val errBody = response.errorBody()?.string()
+                val parsed = try {
+                    Gson().fromJson(errBody, ApiResponse::class.java)
+                } catch (_: Exception) {
+                    null
+                }
+                Result.failure(Exception(parsed?.message ?: body?.message ?: "Failed to register child"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteParentChild(childId: String): Result<Boolean> {
+        return try {
+            val res = api.deleteParentChild(childId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to remove child"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getParentVideoRequests(): Result<List<ParentVideoRequestDto>> {
+        return try {
+            val res = api.getParentVideoRequests()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load approval requests"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun decideParentVideoRequest(
+        requestId: String,
+        decision: String
+    ): Result<ParentVideoRequestDto> {
+        return try {
+            val response = api.decideParentVideoRequest(requestId, DecideVideoRequestBody(decision))
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Failed to update request"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

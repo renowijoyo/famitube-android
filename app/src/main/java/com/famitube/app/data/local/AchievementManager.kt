@@ -109,24 +109,6 @@ class AchievementManager(
                 badgeEmoji = "📺"
             ),
             Achievement(
-                id = "quiz_whiz",
-                title = "Quiz Whiz",
-                description = "Unlock a channel by passing a quiz.",
-                category = AchievementCategory.LEARNING,
-                targetProgress = 1,
-                starReward = 50,
-                badgeEmoji = "🧠"
-            ),
-            Achievement(
-                id = "quiz_master",
-                title = "Brainiac",
-                description = "Pass 3 channel quizzes.",
-                category = AchievementCategory.LEARNING,
-                targetProgress = 3,
-                starReward = 120,
-                badgeEmoji = "🏆"
-            ),
-            Achievement(
                 id = "safe_searcher",
                 title = "Curious Mind",
                 description = "Search for safe videos 3 times.",
@@ -150,7 +132,7 @@ class AchievementManager(
             level <= 1 -> "Curious Explorer"
             level == 2 -> "Star Watcher"
             level == 3 -> "Super Learner"
-            level == 4 -> "Quiz Champion"
+            level == 4 -> "Knowledge Champion"
             level == 5 -> "FamiTube Hero"
             else -> "Galactic Legend"
         }
@@ -226,12 +208,6 @@ class AchievementManager(
         }
     }
 
-    fun recordQuizPassed() {
-        val current = prefs.getInt(key("quizzes_passed"), 0)
-        prefs.edit().putInt(key("quizzes_passed"), current + 1).apply()
-        evaluateAndNotify()
-    }
-
     fun recordPlaylistCreated() {
         val current = prefs.getInt(key("playlists_created"), 0)
         prefs.edit().putInt(key("playlists_created"), current + 1).apply()
@@ -286,8 +262,6 @@ class AchievementManager(
                 prefs.getInt(key("playlists_created"), 0)
             "channel_hopper" ->
                 prefs.getStringSet(key("visited_channels"), emptySet())?.size ?: 0
-            "quiz_whiz", "quiz_master" ->
-                prefs.getInt(key("quizzes_passed"), 0)
             "safe_searcher" ->
                 prefs.getInt(key("searches_performed"), 0)
             "daily_streak_3" ->

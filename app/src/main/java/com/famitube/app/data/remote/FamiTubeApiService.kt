@@ -83,18 +83,6 @@ interface FamiTubeApiService {
     @GET("config")
     suspend fun getAppConfig(): ApiResponse<AppConfig>
 
-    // Channel Quiz Wall
-    @GET("kids/channels/{channelId}/access")
-    suspend fun getChannelAccess(
-        @Path("channelId") channelId: String
-    ): ApiResponse<ChannelAccessData>
-
-    @POST("kids/channels/{channelId}/quiz-answer")
-    suspend fun submitChannelQuizAnswer(
-        @Path("channelId") channelId: String,
-        @Body body: QuizAnswerRequest
-    ): Response<ApiResponse<QuizAnswerData>>
-
     // Kid YouTube Search & Approval
     @GET("kids/youtube-search")
     suspend fun searchYouTube(
@@ -140,4 +128,27 @@ interface FamiTubeApiService {
     suspend fun deleteKidPlaylist(
         @Path("playlistId") playlistId: String
     ): ApiResponse<Any>
+
+    // Parent Mode Endpoints
+    @GET("parent/children")
+    suspend fun getParentChildren(): ApiResponse<List<ParentChildDto>>
+
+    @POST("parent/children")
+    suspend fun registerParentChild(
+        @Body body: RegisterChildRequest
+    ): Response<ApiResponse<ParentChildDto>>
+
+    @DELETE("parent/children/{childId}")
+    suspend fun deleteParentChild(
+        @Path("childId") childId: String
+    ): ApiResponse<Any>
+
+    @GET("parent/video-requests")
+    suspend fun getParentVideoRequests(): ApiResponse<List<ParentVideoRequestDto>>
+
+    @POST("parent/video-requests/{requestId}/decide")
+    suspend fun decideParentVideoRequest(
+        @Path("requestId") requestId: String,
+        @Body body: DecideVideoRequestBody
+    ): Response<ApiResponse<ParentVideoRequestDto>>
 }

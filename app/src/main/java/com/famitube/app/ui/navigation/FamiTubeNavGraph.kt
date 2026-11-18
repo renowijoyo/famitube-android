@@ -34,6 +34,7 @@ import com.famitube.app.ui.screens.favorites.FavoritesScreen
 import com.famitube.app.ui.screens.home.HomeScreen
 import com.famitube.app.ui.screens.home.HomeViewModel
 import com.famitube.app.ui.screens.login.LoginScreen
+import com.famitube.app.ui.screens.parental.ParentDashboardScreen
 import com.famitube.app.ui.screens.parental.ParentalSettingsScreen
 import com.famitube.app.ui.screens.player.LiveTvPlayerScreen
 import com.famitube.app.ui.screens.player.PlayerScreen
@@ -98,16 +99,44 @@ fun FamiTubeNavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (repository.isLoggedIn()) Screen.Home.route else Screen.Login.route,
+            startDestination = when {
+                !repository.isLoggedIn() -> Screen.Login.route
+                repository.isParentMode() -> Screen.ParentDashboard.route
+                else -> Screen.Home.route
+            },
             modifier = modifier.padding(innerPadding)
         ) {
-            // Child Login Gate (only parent-registered child email/Gmail allowed)
+            // Child Login Gate (main login screen, with Parent Login toggle)
             composable(Screen.Login.route) {
                 LoginScreen(
                     repository = repository,
                     onLoginSuccess = {
-                        navController.navigate(Screen.Home.route) {
+                        val dest = if (repository.isParentMode()) {
+                            Screen.ParentDashboard.route
+                        } else {
+                            Screen.Home.route
+                        }
+                        navController.navigate(dest) {
                             popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // Parent Mode Dashboard (shown when signed in with a parent account)
+            composable(Screen.ParentDashboard.route) {
+                ParentDashboardScreen(
+                    repository = repository,
+                    onOpenSettings = {
+                        navController.navigate(Screen.ParentalSettings.route)
+                    },
+                    onPreviewChildMode = {
+                        navController.navigate(Screen.Home.route)
+                    },
+                    onLogout = {
+                        repository.logout()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
                         }
                     }
                 )

@@ -34,11 +34,9 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
-import com.famitube.app.data.model.ChannelAccessData
 import com.famitube.app.data.model.LiveChannelState
 import com.famitube.app.data.model.SourceType
 import com.famitube.app.data.repository.FamiTubeRepository
-import com.famitube.app.ui.components.ChannelQuizWall
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
 import com.famitube.app.ui.theme.SurfaceLightDark
@@ -54,7 +52,6 @@ fun LiveTvPlayerScreen(
     onBackClick: () -> Unit
 ) {
     var liveState by remember { mutableStateOf<LiveChannelState?>(null) }
-    var lockedAccess by remember { mutableStateOf<ChannelAccessData?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var remainingSeconds by remember { mutableIntStateOf(0) }
     var elapsedInVideo by remember { mutableIntStateOf(0) }
@@ -63,14 +60,6 @@ fun LiveTvPlayerScreen(
 
     fun fetchSchedule() {
         scope.launch {
-            val accessRes = repository.getChannelAccess(channelId)
-            val access = accessRes.getOrNull()
-            if (access != null && !access.unlocked) {
-                lockedAccess = access
-                isLoading = false
-                return@launch
-            }
-            lockedAccess = null
             val res = repository.getLiveChannelState(channelId)
             val data = res.getOrNull()
             if (data != null) {
@@ -153,16 +142,6 @@ fun LiveTvPlayerScreen(
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = PinkPrimary
-                )
-            } else if (lockedAccess != null) {
-                ChannelQuizWall(
-                    repository = repository,
-                    channelId = channelId,
-                    initialAccess = lockedAccess!!,
-                    onUnlocked = {
-                        isLoading = true
-                        fetchSchedule()
-                    }
                 )
             } else if (liveState?.currentVideo == null) {
                 Column(

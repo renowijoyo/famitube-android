@@ -26,6 +26,7 @@ class ParentalPreferences(context: Context) {
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_USER_NAME = "user_name"
+        private const val KEY_USER_ROLE = "user_role"
         private const val KEY_FAVORITES = "favorite_videos_set"
         private const val KEY_HISTORY = "history_videos_list"
         private const val KEY_ATTENTION_TRACKING = "attention_tracking_enabled"
@@ -90,11 +91,18 @@ class ParentalPreferences(context: Context) {
         get() = prefs.getString(KEY_USER_NAME, "") ?: ""
         set(value) = prefs.edit().putString(KEY_USER_NAME, value).apply()
 
+    var loggedInRole: String
+        get() = prefs.getString(KEY_USER_ROLE, "CHILD") ?: "CHILD"
+        set(value) = prefs.edit().putString(KEY_USER_ROLE, value.uppercase()).apply()
+
+    fun isParentAccount(): Boolean = loggedInRole.equals("PARENT", ignoreCase = true)
+
     fun clearAuthSession() {
         prefs.edit()
             .remove(KEY_AUTH_TOKEN)
             .remove(KEY_USER_EMAIL)
             .remove(KEY_USER_NAME)
+            .remove(KEY_USER_ROLE)
             .apply()
     }
 

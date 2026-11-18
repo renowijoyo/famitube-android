@@ -18,10 +18,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.famitube.app.data.model.ChannelAccessData
 import com.famitube.app.data.model.ChannelDetailResponse
 import com.famitube.app.data.repository.FamiTubeRepository
-import com.famitube.app.ui.components.ChannelQuizWall
 import com.famitube.app.ui.components.VideoCard
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
@@ -36,7 +34,6 @@ fun ChannelDetailScreen(
     onVideoClick: (String) -> Unit
 ) {
     var detail by remember { mutableStateOf<ChannelDetailResponse?>(null) }
-    var lockedAccess by remember { mutableStateOf<ChannelAccessData?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
     val scope = rememberCoroutineScope()
@@ -44,14 +41,6 @@ fun ChannelDetailScreen(
     fun loadChannel() {
         scope.launch {
             isLoading = true
-            val accessRes = repository.getChannelAccess(channelId)
-            val access = accessRes.getOrNull()
-            if (access != null && !access.unlocked) {
-                lockedAccess = access
-                isLoading = false
-                return@launch
-            }
-            lockedAccess = null
             val res = repository.getChannelDetail(channelId)
             detail = res.getOrNull()
             isLoading = false
@@ -88,13 +77,6 @@ fun ChannelDetailScreen(
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = PinkPrimary
-                )
-            } else if (lockedAccess != null) {
-                ChannelQuizWall(
-                    repository = repository,
-                    channelId = channelId,
-                    initialAccess = lockedAccess!!,
-                    onUnlocked = { loadChannel() }
                 )
             } else if (detail != null) {
                 val channel = detail!!.channel

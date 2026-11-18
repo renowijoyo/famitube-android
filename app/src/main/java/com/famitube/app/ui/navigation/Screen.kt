@@ -20,4 +20,5 @@ sealed class Screen(val route: String) {
     }
     object ParentalGate : Screen("parental_gate")
     object ParentalSettings : Screen("parental_settings")
+    object ParentDashboard : Screen("parent_dashboard")
 }

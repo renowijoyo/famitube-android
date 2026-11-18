@@ -94,7 +94,6 @@ data class PlanEntitlementsDto(
     @SerializedName("isPremium") val isPremium: Boolean = false,
     @SerializedName("planExpiresAt") val planExpiresAt: String? = null,
     @SerializedName("maxChildren") val maxChildren: Int? = 1,
-    @SerializedName("maxQuizChannels") val maxQuizChannels: Int? = 1,
     @SerializedName("maxPlaylists") val maxPlaylists: Int? = 1,
     @SerializedName("maxActivePresets") val maxActivePresets: Int? = 1,
     @SerializedName("allowCustomTagRules") val allowCustomTagRules: Boolean = false,
@@ -141,54 +140,6 @@ data class KidsFeedData(
     @SerializedName("videos") val videos: List<Video> = emptyList(),
     @SerializedName("entitlements") val entitlements: PlanEntitlementsDto? = null,
     @SerializedName("parentalSettings") val parentalSettings: ParentalSettingsDto? = null
-)
-
-// ==========================================
-// CHANNEL QUIZ WALL
-// ==========================================
-
-data class QuizQuestion(
-    @SerializedName("id") val id: String,
-    @SerializedName("type") val type: String = "MATH",
-    @SerializedName("prompt") val prompt: String,
-    @SerializedName("options") val options: List<String> = emptyList()
-)
-
-data class ChannelAccessData(
-    @SerializedName("unlocked") val unlocked: Boolean = true,
-    @SerializedName("quizRequired") val quizRequired: Boolean? = null,
-    @SerializedName("status") val status: String? = null, // QUIZ_REQUIRED, COOLDOWN, LOCKED
-    @SerializedName("quizType") val quizType: String? = null,
-    @SerializedName("wrongAttempts") val wrongAttempts: Int = 0,
-    @SerializedName("maxAttempts") val maxAttempts: Int = 3,
-    @SerializedName("retryWaitSeconds") val retryWaitSeconds: Int = 0,
-    @SerializedName("lockoutAction") val lockoutAction: String? = null,
-    @SerializedName("lockoutDurationSeconds") val lockoutDurationSeconds: Int = 0,
-    @SerializedName("remainingSeconds") val remainingSeconds: Int = 0,
-    @SerializedName("unlockedUntil") val unlockedUntil: String? = null,
-    @SerializedName("nextQuizAt") val nextQuizAt: String? = null,
-    @SerializedName("lockedUntil") val lockedUntil: String? = null,
-    @SerializedName("grantedAfterWait") val grantedAfterWait: Boolean = false,
-    @SerializedName("question") val question: QuizQuestion? = null
-)
-
-data class QuizAnswerRequest(
-    @SerializedName("questionId") val questionId: String,
-    @SerializedName("selectedIndex") val selectedIndex: Int
-)
-
-data class QuizAnswerData(
-    @SerializedName("correct") val correct: Boolean = false,
-    @SerializedName("unlocked") val unlocked: Boolean = false,
-    @SerializedName("status") val status: String? = null,
-    @SerializedName("lockoutAction") val lockoutAction: String? = null,
-    @SerializedName("lockedUntil") val lockedUntil: String? = null,
-    @SerializedName("nextQuizAt") val nextQuizAt: String? = null,
-    @SerializedName("remainingSeconds") val remainingSeconds: Int = 0,
-    @SerializedName("wrongAttempts") val wrongAttempts: Int = 0,
-    @SerializedName("maxAttempts") val maxAttempts: Int = 3,
-    @SerializedName("unlockedUntil") val unlockedUntil: String? = null,
-    @SerializedName("message") val message: String? = null
 )
 
 // ==========================================
@@ -265,6 +216,48 @@ data class KidHistoryPostRequest(
     @SerializedName("sourceUrl") val sourceUrl: String
 )
 
+// ==========================================
+// PARENT MODE MODELS
+// ==========================================
+
+data class ParentChildDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("role") val role: String = "CHILD",
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
+    @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
+    @SerializedName("searchViewsUsed") val searchViewsUsed: Int = 0,
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class RegisterChildRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("ageRating") val ageRating: String = "ALL"
+)
+
+data class ParentVideoRequestDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("kidId") val kidId: String = "",
+    @SerializedName("kidName") val kidName: String = "",
+    @SerializedName("kidEmail") val kidEmail: String = "",
+    @SerializedName("youtubeVideoId") val youtubeVideoId: String = "",
+    @SerializedName("title") val title: String,
+    @SerializedName("channelTitle") val channelTitle: String = "",
+    @SerializedName("thumbnailUrl") val thumbnailUrl: String = "",
+    @SerializedName("status") val status: String = "PENDING",
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class DecideVideoRequestBody(
+    @SerializedName("decision") val decision: String
+)
+
 data class TagDefinitionDto(
     @SerializedName("id") val id: String,
     @SerializedName("label") val label: String,
@@ -326,4 +319,46 @@ data class AddKidPlaylistItemRequest(
     @SerializedName("thumbnailUrl") val thumbnailUrl: String,
     @SerializedName("sourceType") val sourceType: String = "YOUTUBE",
     @SerializedName("sourceUrl") val sourceUrl: String
+)
+
+// ==========================================
+// PARENT MODE MODELS
+// ==========================================
+
+data class ParentChildDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("role") val role: String = "CHILD",
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
+    @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
+    @SerializedName("searchViewsUsed") val searchViewsUsed: Int = 0,
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class RegisterChildRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("ageRating") val ageRating: String = "ALL"
+)
+
+data class ParentVideoRequestDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("kidId") val kidId: String = "",
+    @SerializedName("kidName") val kidName: String = "",
+    @SerializedName("kidEmail") val kidEmail: String = "",
+    @SerializedName("youtubeVideoId") val youtubeVideoId: String = "",
+    @SerializedName("title") val title: String,
+    @SerializedName("channelTitle") val channelTitle: String = "",
+    @SerializedName("thumbnailUrl") val thumbnailUrl: String = "",
+    @SerializedName("status") val status: String = "PENDING",
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class DecideVideoRequestBody(
+    @SerializedName("decision") val decision: String
 )
