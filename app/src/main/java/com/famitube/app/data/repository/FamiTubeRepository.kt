@@ -1,6 +1,12 @@
 ﻿package com.famitube.app.data.repository
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
+import androidx.core.content.ContextCompat
 import com.google.gson.Gson
 import com.famitube.app.data.local.AchievementManager
 import com.famitube.app.data.local.ParentalPreferences
@@ -15,7 +21,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 class FamiTubeRepository(
     private val preferences: ParentalPreferences,
     private val achievementManager: AchievementManager? = null,
-    private val starPointsManager: StarPointsManager? = null
+    private val starPointsManager: StarPointsManager? = null,
+    private val appContext: Context? = null
 ) {
     private val _oauthCallbackFlow = MutableSharedFlow<Uri>(replay = 1, extraBufferCapacity = 4)
     val oauthCallbackFlow: SharedFlow<Uri> = _oauthCallbackFlow.asSharedFlow()
@@ -414,9 +421,42 @@ class FamiTubeRepository(
     // KID YOUTUBE SEARCH, HISTORY & PLAYLISTS
     // ==========================================
 
+    @SuppressLint("MissingPermission")
+    private fun getLastKnownGpsCoords(): Pair<Double, Double>? {
+        val ctx = appContext ?: return null
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            ctx,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasFine = ContextCompat.checkSelfPermission(
+            ctx,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasCoarse && !hasFine) return null
+
+        return try {
+            val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+            val loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            loc?.let { it.latitude to it.longitude }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     suspend fun searchYouTube(query: String): Result<YouTubeSearchData> {
         return try {
-            val response = api.searchYouTube(query)
+            val locale = java.util.Locale.getDefault()
+            val region = locale.country.takeIf { it.length == 2 }
+            val lang = locale.language.takeIf { it.length == 2 }
+            val gps = getLastKnownGpsCoords()
+            val response = api.searchYouTube(
+                query = query,
+                region = region,
+                lang = lang,
+                lat = gps?.first,
+                lon = gps?.second
+            )
             if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
                 if (query.isNotBlank()) {
                     achievementManager?.recordSearchPerformed()

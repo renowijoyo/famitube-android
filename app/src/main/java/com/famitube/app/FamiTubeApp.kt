@@ -25,6 +25,6 @@ class FamiTubeApp : Application() {
         preferences = ParentalPreferences(this)
         starPointsManager = StarPointsManager(this, preferences)
         achievementManager = AchievementManager(this, preferences, starPointsManager)
-        repository = FamiTubeRepository(preferences, achievementManager, starPointsManager)
+        repository = FamiTubeRepository(preferences, achievementManager, starPointsManager, this)
     }
 }

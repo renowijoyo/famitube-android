@@ -100,7 +100,11 @@ interface FamiTubeApiService {
     // Kid YouTube Search & Approval
     @GET("kids/youtube-search")
     suspend fun searchYouTube(
-        @Query("q") query: String
+        @Query("q") query: String,
+        @Query("region") region: String? = null,
+        @Query("lang") lang: String? = null,
+        @Query("lat") lat: Double? = null,
+        @Query("lon") lon: Double? = null
     ): Response<ApiResponse<YouTubeSearchData>>
 
     @POST("kids/youtube-search/watch")
