@@ -230,8 +230,27 @@ data class ParentChildDto(
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
     @SerializedName("searchViewsUsed") val searchViewsUsed: Int = 0,
     @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
+    @SerializedName("parentPin") val parentPin: String = "1234",
     @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
     @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class GlobalParentalControlsDto(
+    @SerializedName("parentPin") val parentPin: String = "1234",
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("attentionPauseSeconds") val attentionPauseSeconds: Int = 30,
+    @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70,
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
+    @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true
+)
+
+data class UpdateChildControlsRequest(
+    @SerializedName("overrides") val overrides: Map<String, Any?>
 )
 
 data class RegisterChildRequest(
@@ -335,8 +354,27 @@ data class ParentChildDto(
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
     @SerializedName("searchViewsUsed") val searchViewsUsed: Int = 0,
     @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
+    @SerializedName("parentPin") val parentPin: String = "1234",
     @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
     @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class GlobalParentalControlsDto(
+    @SerializedName("parentPin") val parentPin: String = "1234",
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("attentionPauseSeconds") val attentionPauseSeconds: Int = 30,
+    @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70,
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
+    @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true
+)
+
+data class UpdateChildControlsRequest(
+    @SerializedName("overrides") val overrides: Map<String, Any?>
 )
 
 data class RegisterChildRequest(

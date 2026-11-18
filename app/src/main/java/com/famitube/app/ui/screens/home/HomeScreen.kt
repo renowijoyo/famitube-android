@@ -41,7 +41,6 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onVideoClick: (String) -> Unit,
     onSearchClick: () -> Unit,
-    onNavigateToParental: () -> Unit,
     onNavigateToBadges: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateTab: (String) -> Unit = {}
@@ -50,7 +49,6 @@ fun HomeScreen(
     val starBalance by (viewModel.starBalance?.collectAsState() ?: remember { mutableIntStateOf(0) })
     val ageFilter by viewModel.ageFilterFlow.collectAsState()
     val isSimpleMode = ageFilter == "TODDLER" || ageFilter == "YOUNG_KIDS"
-    var showParentalGate by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.updateRemainingTime()
@@ -64,7 +62,6 @@ fun HomeScreen(
                 onStarsClick = onNavigateToBadges,
                 onProfileClick = onNavigateToProfile,
                 onSearchClick = onSearchClick,
-                onParentalClick = { showParentalGate = true },
                 showSearchButton = !isSimpleMode
             )
         }
@@ -323,18 +320,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
-
-            // Parental PIN Gate Dialog
-            if (showParentalGate) {
-                ParentalGateDialog(
-                    onDismiss = { showParentalGate = false },
-                    onSuccess = {
-                        showParentalGate = false
-                        onNavigateToParental()
-                    },
-                    verifyPin = { pin -> viewModel.verifyParentPin(pin) }
-                )
             }
         }
     }

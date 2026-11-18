@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.famitube.app.data.repository.FamiTubeRepository
+import com.famitube.app.ui.components.ParentalGateDialog
 import com.famitube.app.ui.theme.BlueSecondary
 import com.famitube.app.ui.theme.PinkLight
 import com.famitube.app.ui.theme.PinkPrimary
@@ -39,9 +41,11 @@ fun ProfileScreen(
     repository: FamiTubeRepository,
     onBackClick: () -> Unit,
     onNavigateToAchievements: () -> Unit,
+    onNavigateToParental: () -> Unit = {},
     onLoggedOut: () -> Unit
 ) {
     val prefs = repository.getPreferences()
+    var showParentalGate by remember { mutableStateOf(false) }
     val themeMode by prefs.themeModeFlow.collectAsState()
     val ageFilter by prefs.ageFilterFlow.collectAsState()
     val starBalance by (repository.getStarPointsManager()?.starBalanceFlow?.collectAsState()
@@ -269,6 +273,22 @@ fun ProfileScreen(
                 Text("View Badges & Stars", fontWeight = FontWeight.SemiBold)
             }
 
+            OutlinedButton(
+                onClick = { showParentalGate = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = PinkPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Parental Controls", fontWeight = FontWeight.SemiBold)
+            }
+
             if (repository.isLoggedIn()) {
                 Button(
                     onClick = {
@@ -291,6 +311,17 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showParentalGate) {
+        ParentalGateDialog(
+            onDismiss = { showParentalGate = false },
+            onSuccess = {
+                showParentalGate = false
+                onNavigateToParental()
+            },
+            verifyPin = { pin -> prefs.verifyPin(pin) }
+        )
     }
 }
 

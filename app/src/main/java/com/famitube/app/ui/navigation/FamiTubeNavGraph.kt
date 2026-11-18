@@ -153,9 +153,6 @@ fun FamiTubeNavGraph(
                     onSearchClick = {
                         navController.navigate(Screen.Search.route)
                     },
-                    onNavigateToParental = {
-                        navController.navigate(Screen.ParentalSettings.route)
-                    },
                     onNavigateToBadges = {
                         navController.navigate(Screen.Achievements.route) {
                             popUpTo(Screen.Home.route) { saveState = true }
@@ -187,6 +184,9 @@ fun FamiTubeNavGraph(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onNavigateToParental = {
+                        navController.navigate(Screen.ParentalSettings.route)
                     },
                     onLoggedOut = {
                         navController.navigate(Screen.Login.route) {

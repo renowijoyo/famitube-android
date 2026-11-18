@@ -87,7 +87,7 @@ class HomeViewModel(
             )
             _uiState.value = _uiState.value.copy(
                 isLoadingTopicVideos = false,
-                videos = result.getOrDefault(emptyList())
+                videos = result.getOrDefault(emptyList()).sortedByDescending { it.createdAt }
             )
         }
     }

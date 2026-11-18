@@ -376,6 +376,41 @@ class FamiTubeRepository(
     }
 
     // ==========================================
+    // KID SAVED CHANNELS
+    // ==========================================
+
+    suspend fun getKidSavedChannels(): Result<List<Channel>> {
+        if (!isLoggedIn()) return Result.success(emptyList())
+        return try {
+            val res = api.getKidSavedChannels()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load saved channels"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addKidSavedChannel(channelId: String): Result<Boolean> {
+        return try {
+            val res = api.addKidSavedChannel(channelId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to add channel"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeKidSavedChannel(channelId: String): Result<Boolean> {
+        return try {
+            val res = api.removeKidSavedChannel(channelId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to remove channel"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ==========================================
     // KID YOUTUBE SEARCH, HISTORY & PLAYLISTS
     // ==========================================
 
@@ -492,6 +527,49 @@ class FamiTubeRepository(
     // ==========================================
     // PARENT MODE
     // ==========================================
+
+    suspend fun getParentGlobalControls(): Result<GlobalParentalControlsDto> {
+        return try {
+            val res = api.getParentGlobalControls()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load global controls"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateParentGlobalControls(
+        controls: GlobalParentalControlsDto
+    ): Result<GlobalParentalControlsDto> {
+        return try {
+            val response = api.updateParentGlobalControls(controls)
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Failed to update global controls"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateParentChildOverrides(
+        childId: String,
+        overrides: Map<String, Any?>
+    ): Result<ParentChildDto> {
+        return try {
+            val response = api.updateParentChild(childId, UpdateChildControlsRequest(overrides))
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Failed to update child override"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun getParentChildren(): Result<List<ParentChildDto>> {
         return try {

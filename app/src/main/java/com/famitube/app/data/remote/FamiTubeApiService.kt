@@ -83,6 +83,20 @@ interface FamiTubeApiService {
     @GET("config")
     suspend fun getAppConfig(): ApiResponse<AppConfig>
 
+    // Kid Saved Channels
+    @GET("kids/channels")
+    suspend fun getKidSavedChannels(): ApiResponse<List<Channel>>
+
+    @POST("kids/channels/{channelId}")
+    suspend fun addKidSavedChannel(
+        @Path("channelId") channelId: String
+    ): ApiResponse<Any>
+
+    @DELETE("kids/channels/{channelId}")
+    suspend fun removeKidSavedChannel(
+        @Path("channelId") channelId: String
+    ): ApiResponse<Any>
+
     // Kid YouTube Search & Approval
     @GET("kids/youtube-search")
     suspend fun searchYouTube(
@@ -130,12 +144,26 @@ interface FamiTubeApiService {
     ): ApiResponse<Any>
 
     // Parent Mode Endpoints
+    @GET("parent/controls")
+    suspend fun getParentGlobalControls(): ApiResponse<GlobalParentalControlsDto>
+
+    @PUT("parent/controls")
+    suspend fun updateParentGlobalControls(
+        @Body body: GlobalParentalControlsDto
+    ): Response<ApiResponse<GlobalParentalControlsDto>>
+
     @GET("parent/children")
     suspend fun getParentChildren(): ApiResponse<List<ParentChildDto>>
 
     @POST("parent/children")
     suspend fun registerParentChild(
         @Body body: RegisterChildRequest
+    ): Response<ApiResponse<ParentChildDto>>
+
+    @PUT("parent/children/{childId}")
+    suspend fun updateParentChild(
+        @Path("childId") childId: String,
+        @Body body: UpdateChildControlsRequest
     ): Response<ApiResponse<ParentChildDto>>
 
     @DELETE("parent/children/{childId}")

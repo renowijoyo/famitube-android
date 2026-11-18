@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.famitube.app.data.model.GlobalParentalControlsDto
 import com.famitube.app.data.model.ParentChildDto
 import com.famitube.app.data.model.ParentVideoRequestDto
 import com.famitube.app.data.repository.FamiTubeRepository
@@ -53,9 +56,11 @@ fun ParentDashboardScreen(
     var isLoading by remember { mutableStateOf(true) }
     var children by remember { mutableStateOf<List<ParentChildDto>>(emptyList()) }
     var videoRequests by remember { mutableStateOf<List<ParentVideoRequestDto>>(emptyList()) }
+    var globalControls by remember { mutableStateOf(GlobalParentalControlsDto()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var showAddChildDialog by remember { mutableStateOf(false) }
+    var childToEdit by remember { mutableStateOf<ParentChildDto?>(null) }
     var childToDelete by remember { mutableStateOf<ParentChildDto?>(null) }
     var busyRequestId by remember { mutableStateOf<String?>(null) }
 
@@ -65,12 +70,15 @@ fun ParentDashboardScreen(
             errorMessage = null
             val childrenDef = async { repository.getParentChildren() }
             val requestsDef = async { repository.getParentVideoRequests() }
+            val globalDef = async { repository.getParentGlobalControls() }
             val cRes = childrenDef.await()
             val rRes = requestsDef.await()
+            val gRes = globalDef.await()
             cRes.onSuccess { children = it }
                 .onFailure { errorMessage = it.message }
             rRes.onSuccess { videoRequests = it }
                 .onFailure { if (errorMessage == null) errorMessage = it.message }
+            gRes.onSuccess { globalControls = it }
             isLoading = false
         }
     }
@@ -244,11 +252,26 @@ fun ParentDashboardScreen(
                     1 -> MyKidsTab(
                         children = children,
                         onAddChild = { showAddChildDialog = true },
+                        onEditOverrides = { childToEdit = it },
                         onDeleteChild = { childToDelete = it }
                     )
 
                     2 -> ControlsTab(
-                        prefs = prefs,
+                        globalControls = globalControls,
+                        onSaveGlobal = { updated, onDone ->
+                            scope.launch {
+                                val res = repository.updateParentGlobalControls(updated)
+                                res.onSuccess { saved ->
+                                    globalControls = saved
+                                    loadDashboard()
+                                    Toast.makeText(context, "Global controls saved for all kids", Toast.LENGTH_SHORT).show()
+                                    onDone()
+                                }.onFailure { err ->
+                                    Toast.makeText(context, err.message ?: "Failed to save global controls", Toast.LENGTH_SHORT).show()
+                                    onDone()
+                                }
+                            }
+                        },
                         onOpenSettings = onOpenSettings,
                         onPreviewChildMode = onPreviewChildMode,
                         onLogout = onLogout
@@ -271,6 +294,28 @@ fun ParentDashboardScreen(
                         onDone(null)
                     }.onFailure { err ->
                         onDone(err.message ?: "Failed to create child account")
+                    }
+                }
+            }
+        )
+    }
+
+    if (childToEdit != null) {
+        val target = childToEdit!!
+        ChildOverrideDialog(
+            child = target,
+            globalControls = globalControls,
+            onDismiss = { childToEdit = null },
+            onSave = { overrides, onDone ->
+                scope.launch {
+                    val res = repository.updateParentChildOverrides(target.id, overrides)
+                    res.onSuccess { updated ->
+                        children = children.map { if (it.id == target.id) updated else it }
+                        childToEdit = null
+                        Toast.makeText(context, "Updated controls for ${target.name}", Toast.LENGTH_SHORT).show()
+                        onDone(null)
+                    }.onFailure { err ->
+                        onDone(err.message ?: "Failed to update overrides")
                     }
                 }
             }
@@ -443,6 +488,7 @@ private fun VideoRequestsTab(
 private fun MyKidsTab(
     children: List<ParentChildDto>,
     onAddChild: () -> Unit,
+    onEditOverrides: (ParentChildDto) -> Unit,
     onDeleteChild: (ParentChildDto) -> Unit
 ) {
     if (children.isEmpty()) {
@@ -533,6 +579,21 @@ private fun MyKidsTab(
                             style = MaterialTheme.typography.labelSmall,
                             color = BlueSecondary
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val hasOverrides = child.overrides.isNotEmpty()
+                        Text(
+                            text = if (hasOverrides) "Custom Override (${child.overrides.size})" else "Using Global Controls",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (hasOverrides) PinkPrimary else GreenSuccess,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    IconButton(onClick = { onEditOverrides(child) }) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Kid Overrides",
+                            tint = BlueSecondary
+                        )
                     }
                     IconButton(onClick = { onDeleteChild(child) }) {
                         Icon(
@@ -549,14 +610,24 @@ private fun MyKidsTab(
 
 @Composable
 private fun ControlsTab(
-    prefs: com.famitube.app.data.local.ParentalPreferences,
+    globalControls: GlobalParentalControlsDto,
+    onSaveGlobal: (GlobalParentalControlsDto, () -> Unit) -> Unit,
     onOpenSettings: () -> Unit,
     onPreviewChildMode: () -> Unit,
     onLogout: () -> Unit
 ) {
+    var pin by remember(globalControls) { mutableStateOf(globalControls.parentPin) }
+    var dailyLimit by remember(globalControls) { mutableStateOf(globalControls.dailyLimitMinutes.toString()) }
+    var ageRating by remember(globalControls) { mutableStateOf(globalControls.ageRating) }
+    var attentionEnabled by remember(globalControls) { mutableStateOf(globalControls.attentionTrackingEnabled) }
+    var ytSearchEnabled by remember(globalControls) { mutableStateOf(globalControls.youtubeSearchEnabled) }
+    var ytRequireApproval by remember(globalControls) { mutableStateOf(globalControls.searchRequireApproval) }
+    var isSaving by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -564,27 +635,91 @@ private fun ControlsTab(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Device & Family Controls",
+                    text = "Global Parental Controls (All Kids)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Daily limit: ${prefs.dailyLimitMinutes} min • Age filter: ${prefs.selectedAgeFilter}",
+                    text = "Applies to all kids by default unless overridden on an individual child in My Kids.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
+                        label = { Text("Global PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = dailyLimit,
+                        onValueChange = { if (it.all(Char::isDigit)) dailyLimit = it },
+                        label = { Text("Daily Limit (m)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("ALL" to "All", "TODDLER" to "2-4", "YOUNG_KIDS" to "5-8", "OLDER_KIDS" to "9-12").forEach { (code, label) ->
+                        FilterChip(
+                            selected = ageRating == code,
+                            onClick = { ageRating = code },
+                            label = { Text(label, fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Attention Check", style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = attentionEnabled, onCheckedChange = { attentionEnabled = it })
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("YouTube Search", style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = ytSearchEnabled, onCheckedChange = { ytSearchEnabled = it })
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Require Parent Approval", style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = ytRequireApproval, onCheckedChange = { ytRequireApproval = it })
+                }
                 Button(
-                    onClick = onOpenSettings,
+                    onClick = {
+                        isSaving = true
+                        onSaveGlobal(
+                            globalControls.copy(
+                                parentPin = pin.ifBlank { "1234" },
+                                dailyLimitMinutes = dailyLimit.toIntOrNull() ?: 45,
+                                ageRating = ageRating,
+                                attentionTrackingEnabled = attentionEnabled,
+                                youtubeSearchEnabled = ytSearchEnabled,
+                                searchRequireApproval = ytRequireApproval
+                            )
+                        ) { isSaving = false }
+                    },
+                    enabled = !isSaving,
                     colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Tune, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Open Parental Settings", fontWeight = FontWeight.Bold)
+                    Text(if (isSaving) "Saving..." else "Save Global Controls", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -595,17 +730,20 @@ private fun ControlsTab(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Child Feed Preview",
+                    text = "Device Settings & Preview",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Browse the curated channels and videos as your child sees them.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Open Device Parental Settings")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = onPreviewChildMode,
                     modifier = Modifier.fillMaxWidth()
@@ -740,6 +878,139 @@ private fun AddChildAccountDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
             ) {
                 Text(if (isSaving) "Saving..." else "Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ChildOverrideDialog(
+    child: ParentChildDto,
+    globalControls: GlobalParentalControlsDto,
+    onDismiss: () -> Unit,
+    onSave: (Map<String, Any?>, (String?) -> Unit) -> Unit
+) {
+    var dailyLimit by remember { mutableStateOf(child.dailyLimitMinutes.toString()) }
+    var pin by remember { mutableStateOf(child.parentPin) }
+    var ageRating by remember { mutableStateOf(child.ageRating) }
+    var attentionEnabled by remember { mutableStateOf(child.attentionTrackingEnabled) }
+    var ytEnabled by remember { mutableStateOf(child.youtubeSearchEnabled) }
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = { if (!isSaving) onDismiss() },
+        title = { Text("${child.name} — Controls Override", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Global defaults: ${globalControls.dailyLimitMinutes}m/day • ${globalControls.ageRating} • PIN ${globalControls.parentPin}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = dailyLimit,
+                        onValueChange = { if (it.all(Char::isDigit)) dailyLimit = it },
+                        label = { Text("Limit (m)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
+                        label = { Text("PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("ALL" to "All", "TODDLER" to "2-4", "YOUNG_KIDS" to "5-8", "OLDER_KIDS" to "9-12").forEach { (code, label) ->
+                        FilterChip(
+                            selected = ageRating == code,
+                            onClick = { ageRating = code },
+                            label = { Text(label, fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Attention Check", style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = attentionEnabled, onCheckedChange = { attentionEnabled = it })
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("YouTube Search", style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = ytEnabled, onCheckedChange = { ytEnabled = it })
+                }
+                OutlinedButton(
+                    onClick = {
+                        isSaving = true
+                        onSave(
+                            mapOf(
+                                "parentPin" to null,
+                                "dailyLimitMinutes" to null,
+                                "ageRating" to null,
+                                "attentionTrackingEnabled" to null,
+                                "youtubeSearchEnabled" to null
+                            )
+                        ) { err ->
+                            isSaving = false
+                            if (err != null) errorMsg = err
+                        }
+                    },
+                    enabled = !isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Reset to Global Controls")
+                }
+                if (errorMsg != null) {
+                    Text(errorMsg!!, color = PinkLight, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (pin.length != 4) {
+                        errorMsg = "PIN must be 4 digits"
+                        return@Button
+                    }
+                    isSaving = true
+                    onSave(
+                        mapOf(
+                            "dailyLimitMinutes" to (dailyLimit.toIntOrNull() ?: globalControls.dailyLimitMinutes),
+                            "parentPin" to pin,
+                            "ageRating" to ageRating,
+                            "attentionTrackingEnabled" to attentionEnabled,
+                            "youtubeSearchEnabled" to ytEnabled
+                        )
+                    ) { err ->
+                        isSaving = false
+                        if (err != null) errorMsg = err
+                    }
+                },
+                enabled = !isSaving,
+                colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+            ) {
+                Text(if (isSaving) "Saving..." else "Save Override")
             }
         },
         dismissButton = {

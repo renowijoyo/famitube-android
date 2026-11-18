@@ -29,7 +29,6 @@ import com.famitube.app.ui.theme.YellowWarning
 fun FamiTubeTopBar(
     remainingMinutes: Int,
     onSearchClick: () -> Unit,
-    onParentalClick: () -> Unit,
     starBalance: Int? = null,
     onStarsClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
@@ -130,14 +129,6 @@ fun FamiTubeTopBar(
                     imageVector = Icons.Default.AccountCircle,
                     contentDescription = "My Profile",
                     tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(onClick = onParentalClick) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Parental Settings",
-                    tint = PinkPrimary
                 )
             }
         }
