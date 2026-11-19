@@ -319,6 +319,7 @@ data class ParentChildDto(
     @SerializedName("browserEnabled") val browserEnabled: Boolean = true,
     @SerializedName("browserAllowlistOnly") val browserAllowlistOnly: Boolean = false,
     @SerializedName("browserLogHistory") val browserLogHistory: Boolean = true,
+    @SerializedName("browserSearchProvider") val browserSearchProvider: String = "GOOGLE",
     @SerializedName("allowedDomains") val allowedDomains: List<String> = emptyList(),
     @SerializedName("blockedDomains") val blockedDomains: List<String> = emptyList(),
     @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
@@ -373,6 +374,7 @@ data class BrowserConfigDto(
     @SerializedName("browserEnabled") val browserEnabled: Boolean = true,
     @SerializedName("browserAllowlistOnly") val browserAllowlistOnly: Boolean = false,
     @SerializedName("browserLogHistory") val browserLogHistory: Boolean = true,
+    @SerializedName("browserSearchProvider") val browserSearchProvider: String = "GOOGLE",
     @SerializedName("allowedDomains") val allowedDomains: List<String> = emptyList(),
     @SerializedName("blockedDomains") val blockedDomains: List<String> = emptyList()
 )

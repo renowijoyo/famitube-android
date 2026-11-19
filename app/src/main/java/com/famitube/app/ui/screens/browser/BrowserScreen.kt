@@ -180,8 +180,11 @@ fun BrowserScreen(
             trimmed.contains(".") && !trimmed.contains(" ") -> "https://$trimmed"
             else -> {
                 val encoded = URLEncoder.encode(trimmed, "UTF-8")
-                // Use Google with SafeSearch enabled
-                "https://www.google.com/search?safe=active&q=$encoded"
+                when (cfg.browserSearchProvider.uppercase()) {
+                    "DUCKDUCKGO" -> "https://duckduckgo.com/?kp=1&q=$encoded"
+                    "BING" -> "https://www.bing.com/search?adlt=strict&q=$encoded"
+                    else -> "https://www.google.com/search?safe=active&q=$encoded"
+                }
             }
         }
 

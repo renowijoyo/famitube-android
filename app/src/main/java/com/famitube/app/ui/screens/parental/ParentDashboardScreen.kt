@@ -1192,20 +1192,25 @@ private fun BrowserMonitoringTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("Allowlist Only Mode", fontWeight = FontWeight.SemiBold)
+                                    Text("Search Engine", fontWeight = FontWeight.SemiBold)
                                     Text(
-                                        "Only approved domains can be visited",
+                                        "SafeSearch provider used for child searches",
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Switch(
-                                    checked = selectedChild.browserAllowlistOnly,
-                                    enabled = !isSavingRules,
-                                    onCheckedChange = {
-                                        updateChildBrowserOverrides(selectedChild, mapOf("browserAllowlistOnly" to it))
+                                val currentProvider = selectedChild.browserSearchProvider.ifBlank { "GOOGLE" }
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    listOf("GOOGLE" to "Google", "DUCKDUCKGO" to "DuckDuckGo", "BING" to "Bing").forEach { (code, label) ->
+                                        FilterChip(
+                                            selected = currentProvider.equals(code, ignoreCase = true),
+                                            onClick = {
+                                                updateChildBrowserOverrides(selectedChild, mapOf("browserSearchProvider" to code))
+                                            },
+                                            label = { Text(label, fontSize = 11.sp) }
+                                        )
                                     }
-                                )
+                                }
                             }
 
                             Row(
