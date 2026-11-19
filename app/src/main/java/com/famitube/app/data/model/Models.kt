@@ -217,61 +217,6 @@ data class KidHistoryPostRequest(
 )
 
 // ==========================================
-// EMBEDDED BROWSER MODELS
-// ==========================================
-
-data class BrowserConfigDto(
-    @SerializedName("browserEnabled") val browserEnabled: Boolean = true,
-    @SerializedName("browserAllowlistOnly") val browserAllowlistOnly: Boolean = false,
-    @SerializedName("browserLogHistory") val browserLogHistory: Boolean = true,
-    @SerializedName("allowedDomains") val allowedDomains: List<String> = emptyList(),
-    @SerializedName("blockedDomains") val blockedDomains: List<String> = emptyList()
-)
-
-data class BrowserHistoryPostEntry(
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("blocked") val blocked: Boolean = false,
-    @SerializedName("visitedAt") val visitedAt: String
-)
-
-data class BrowserHistoryBatchRequest(
-    @SerializedName("entries") val entries: List<BrowserHistoryPostEntry>
-)
-
-data class KidBrowserHistoryItemDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("kidId") val kidId: String = "",
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("blocked") val blocked: Boolean = false,
-    @SerializedName("visitedAt") val visitedAt: String = ""
-)
-
-data class CreateSiteRequestBody(
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String
-)
-
-data class KidSiteRequestDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("kidId") val kidId: String = "",
-    @SerializedName("kidName") val kidName: String? = null,
-    @SerializedName("parentId") val parentId: String = "",
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String,
-    @SerializedName("status") val status: String = "PENDING",
-    @SerializedName("createdAt") val createdAt: String = "",
-    @SerializedName("decidedAt") val decidedAt: String? = null
-)
-
-data class DecideSiteRequestBody(
-    @SerializedName("decision") val decision: String
-)
-
-// ==========================================
 // NOTIFICATION MODELS
 // ==========================================
 
@@ -355,6 +300,72 @@ data class AddKidPlaylistItemRequest(
 )
 
 // ==========================================
+// PARENT MODE MODELS
+// ==========================================
+
+data class ParentChildDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("role") val role: String = "CHILD",
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
+    @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
+    @SerializedName("searchViewsUsed") val searchViewsUsed: Int = 0,
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
+    @SerializedName("parentPin") val parentPin: String = "1234",
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("browserEnabled") val browserEnabled: Boolean = true,
+    @SerializedName("browserAllowlistOnly") val browserAllowlistOnly: Boolean = false,
+    @SerializedName("browserLogHistory") val browserLogHistory: Boolean = true,
+    @SerializedName("allowedDomains") val allowedDomains: List<String> = emptyList(),
+    @SerializedName("blockedDomains") val blockedDomains: List<String> = emptyList(),
+    @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class GlobalParentalControlsDto(
+    @SerializedName("parentPin") val parentPin: String = "1234",
+    @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("attentionPauseSeconds") val attentionPauseSeconds: Int = 30,
+    @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70,
+    @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
+    @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true
+)
+
+data class UpdateChildControlsRequest(
+    @SerializedName("overrides") val overrides: Map<String, Any?>
+)
+
+data class RegisterChildRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("ageRating") val ageRating: String = "ALL"
+)
+
+data class ParentVideoRequestDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("kidId") val kidId: String = "",
+    @SerializedName("kidName") val kidName: String = "",
+    @SerializedName("kidEmail") val kidEmail: String = "",
+    @SerializedName("youtubeVideoId") val youtubeVideoId: String = "",
+    @SerializedName("title") val title: String = "",
+    @SerializedName("channelTitle") val channelTitle: String = "",
+    @SerializedName("thumbnailUrl") val thumbnailUrl: String = "",
+    @SerializedName("status") val status: String = "PENDING",
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class DecideVideoRequestBody(
+    @SerializedName("decision") val decision: String
+)
+
+// ==========================================
 // EMBEDDED BROWSER MODELS
 // ==========================================
 
@@ -407,4 +418,46 @@ data class KidSiteRequestDto(
 
 data class DecideSiteRequestBody(
     @SerializedName("decision") val decision: String
+)
+
+// ==========================================
+// GAMIFICATION / STARS (SINGLE SOURCE OF TRUTH)
+// ==========================================
+
+data class KidAchievementStatsDto(
+    @SerializedName("videosWatched") val videosWatched: Int = 0,
+    @SerializedName("approvedSearches") val approvedSearches: Int = 0,
+    @SerializedName("playlistsCreated") val playlistsCreated: Int = 0,
+    @SerializedName("playlistItemsCount") val playlistItemsCount: Int = 0
+)
+
+data class KidAchievementItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("icon") val icon: String = "🌟",
+    @SerializedName("progress") val progress: Int = 0,
+    @SerializedName("target") val target: Int = 1,
+    @SerializedName("rewardStars") val rewardStars: Int = 0,
+    @SerializedName("unlocked") val unlocked: Boolean = false
+)
+
+data class KidAchievementsDto(
+    @SerializedName("stars") val stars: Int = 0,
+    @SerializedName("level") val level: Int = 1,
+    @SerializedName("levelTitle") val levelTitle: String = "Curious Explorer",
+    @SerializedName("nextLevelStars") val nextLevelStars: Int = 100,
+    @SerializedName("progressPercent") val progressPercent: Int = 0,
+    @SerializedName("unlockedCount") val unlockedCount: Int = 0,
+    @SerializedName("totalCount") val totalCount: Int = 0,
+    @SerializedName("stats") val stats: KidAchievementStatsDto = KidAchievementStatsDto(),
+    @SerializedName("achievements") val achievements: List<KidAchievementItemDto> = emptyList()
+)
+
+data class StarAwardRequest(
+    @SerializedName("amount") val amount: Int
+)
+
+data class StarSpendRequest(
+    @SerializedName("cost") val cost: Int
 )

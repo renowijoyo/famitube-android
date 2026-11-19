@@ -167,3 +167,13 @@ fun ChannelDetailScreen(
         }
     }
 }
+
+private fun formatChannelAgeBadge(ageRating: String): Pair<String, Color> {
+    return when (ageRating.uppercase()) {
+        "PRESCHOOL" -> "Preschool (0-4)" to Color(0xFF06D6A0)
+        "YOUNG_KIDS" -> "Young Kids (5-7)" to Color(0xFF4CC9F0)
+        "OLDER_KIDS" -> "Older Kids (8-12)" to Color(0xFFFFB703)
+        "TEENS" -> "Teens (13+)" to Color(0xFFFF758C)
+        else -> "All Ages" to Color(0xFF4CC9F0)
+    }
+}

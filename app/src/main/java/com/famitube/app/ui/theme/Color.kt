@@ -9,6 +9,7 @@ val PinkDark = Color(0xFFD61E4C)
 val BlueSecondary = Color(0xFF4361EE)
 val CyanAccent = Color(0xFF4CC9F0)
 val MintSuccess = Color(0xFF06D6A0)
+val GreenSuccess = MintSuccess
 val YellowWarning = Color(0xFFFFB703)
 
 val BackgroundDark = Color(0xFF0F172A)

@@ -133,6 +133,12 @@ class ParentalPreferences(context: Context) {
         return if (remaining < 0) 0 else remaining
     }
 
+    fun getRemainingSecondsToday(): Int {
+        if (dailyLimitMinutes <= 0) return Int.MAX_VALUE
+        val remaining = (dailyLimitMinutes * 60) - getUsedSecondsToday()
+        return if (remaining < 0) 0 else remaining
+    }
+
     private fun checkAndResetDailyCounter() {
         val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
         val lastDate = prefs.getString(KEY_LAST_USAGE_DATE, "")

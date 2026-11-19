@@ -34,8 +34,8 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: FamiTube-apk
+          path: app/build/outputs/apk/debug/*.apk
 
       - name: Publish to Latest Release
         uses: softprops/action-gh-release@v2
@@ -43,4 +43,4 @@ jobs:
           tag_name: latest
           name: FamiTube Android (Latest)
           make_latest: true
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/apk/debug/*.apk

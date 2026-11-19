@@ -14,9 +14,13 @@ import com.famitube.app.data.local.StarPointsManager
 import com.famitube.app.data.model.*
 import com.famitube.app.data.remote.FamiTubeApiService
 import com.famitube.app.data.remote.NetworkModule
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 
 class FamiTubeRepository(
     private val preferences: ParentalPreferences,
@@ -24,6 +28,7 @@ class FamiTubeRepository(
     private val starPointsManager: StarPointsManager? = null,
     private val appContext: Context? = null
 ) {
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _oauthCallbackFlow = MutableSharedFlow<Uri>(replay = 1, extraBufferCapacity = 4)
     val oauthCallbackFlow: SharedFlow<Uri> = _oauthCallbackFlow.asSharedFlow()
 
@@ -354,7 +359,16 @@ class FamiTubeRepository(
 
     fun awardStars(amount: Int, source: StarSource, description: String): Int {
         val updated = starPointsManager?.awardStars(amount, source, description) ?: 0
-        achievementManager?.refreshSummary()
+        if (amount > 0 && isLoggedIn()) {
+            syncScope.launch {
+                try {
+                    val res = api.awardKidStars(StarAwardRequest(amount))
+                    if (res.success && res.data != null) {
+                        achievementManager?.applyRemoteSummary(res.data)
+                    }
+                } catch (_: Exception) { }
+            }
+        }
         return updated
     }
 
@@ -368,18 +382,46 @@ class FamiTubeRepository(
             source = StarSource.VIDEO_REQUEST,
             description = "Requested: $videoTitle"
         ) ?: true
-        if (spent) {
-            achievementManager?.refreshSummary()
+        if (spent && cost > 0 && isLoggedIn()) {
+            syncScope.launch {
+                try {
+                    val res = api.spendKidStars(StarSpendRequest(cost))
+                    if (res.success && res.data != null) {
+                        achievementManager?.applyRemoteSummary(res.data)
+                    }
+                } catch (_: Exception) { }
+            }
         }
         return spent
     }
 
+    suspend fun syncAchievementsFromBackend(): Result<KidAchievementsDto> {
+        if (!isLoggedIn()) return Result.failure(Exception("Not logged in"))
+        return try {
+            val res = api.getKidAchievements()
+            if (res.success && res.data != null) {
+                achievementManager?.applyRemoteSummary(res.data)
+                Result.success(res.data)
+            } else {
+                Result.failure(Exception(res.message ?: "Failed to sync achievements"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun recordDailyVisit() {
         achievementManager?.recordDailyVisit()
+        if (isLoggedIn()) {
+            syncScope.launch { syncAchievementsFromBackend() }
+        }
     }
 
     fun recordVideoWatched(videoId: String, category: String?) {
         achievementManager?.recordVideoWatched(videoId, category)
+        if (isLoggedIn()) {
+            syncScope.launch { syncAchievementsFromBackend() }
+        }
     }
 
     // ==========================================

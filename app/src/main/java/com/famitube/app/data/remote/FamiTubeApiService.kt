@@ -6,6 +6,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -234,4 +235,18 @@ interface FamiTubeApiService {
 
     @DELETE("notifications")
     suspend fun clearNotifications(): ApiResponse<Any>
+
+    // Gamification / Stars (Single Source of Truth)
+    @GET("kids/achievements")
+    suspend fun getKidAchievements(): ApiResponse<KidAchievementsDto>
+
+    @POST("kids/stars/award")
+    suspend fun awardKidStars(
+        @Body body: StarAwardRequest
+    ): ApiResponse<KidAchievementsDto>
+
+    @POST("kids/stars/spend")
+    suspend fun spendKidStars(
+        @Body body: StarSpendRequest
+    ): ApiResponse<KidAchievementsDto>
 }

@@ -6,6 +6,7 @@ import com.famitube.app.data.model.Achievement
 import com.famitube.app.data.model.AchievementCategory
 import com.famitube.app.data.model.AchievementProgress
 import com.famitube.app.data.model.GamificationSummary
+import com.famitube.app.data.model.KidAchievementsDto
 import com.famitube.app.data.model.StarSource
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -309,6 +310,44 @@ class AchievementManager(
             totalCount = CATALOG.size,
             currentStreakDays = streak,
             achievements = items
+        )
+    }
+
+    fun applyRemoteSummary(remote: KidAchievementsDto) {
+        starPointsManager.setSyncedBalance(remote.stars)
+        val mappedAchievements = remote.achievements.map { dto ->
+            val category = when {
+                dto.id.contains("playlist") || dto.id.contains("curator") -> AchievementCategory.CURATING
+                dto.id.contains("search") -> AchievementCategory.HABITS
+                else -> AchievementCategory.WATCHING
+            }
+            AchievementProgress(
+                achievement = Achievement(
+                    id = dto.id,
+                    title = dto.title,
+                    description = dto.description,
+                    category = category,
+                    targetProgress = dto.target.coerceAtLeast(1),
+                    starReward = dto.rewardStars,
+                    badgeEmoji = dto.icon.ifBlank { "🌟" }
+                ),
+                currentProgress = dto.progress,
+                isUnlocked = dto.unlocked,
+                unlockedAtMillis = if (dto.unlocked) System.currentTimeMillis() else null
+            )
+        }
+        val streak = prefs.getInt(key("streak_days"), 0)
+        _summaryFlow.value = GamificationSummary(
+            totalStarsEarned = remote.stars,
+            starBalance = remote.stars,
+            level = remote.level,
+            rankTitle = remote.levelTitle,
+            starsInCurrentLevel = remote.progressPercent.coerceIn(0, 100),
+            starsForNextLevel = 100,
+            unlockedCount = remote.unlockedCount,
+            totalCount = remote.totalCount.coerceAtLeast(mappedAchievements.size),
+            currentStreakDays = streak,
+            achievements = mappedAchievements
         )
     }
 }

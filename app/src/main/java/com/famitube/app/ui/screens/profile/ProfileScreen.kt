@@ -25,7 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.famitube.app.data.repository.FamiTubeRepository
@@ -310,6 +312,31 @@ fun ProfileScreen(
                     Text("Sign Out", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
+
+            val context = LocalContext.current
+            val versionLabel = remember(context) {
+                try {
+                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    val vCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        pInfo.longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        pInfo.versionCode.toLong()
+                    }
+                    "FamiTube v${pInfo.versionName} (Build $vCode)"
+                } catch (_: Exception) {
+                    "FamiTube"
+                }
+            }
+            Text(
+                text = versionLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 12.dp)
+            )
         }
     }
 

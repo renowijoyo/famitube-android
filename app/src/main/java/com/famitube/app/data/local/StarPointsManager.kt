@@ -51,6 +51,16 @@ class StarPointsManager(
         _transactionsFlow.value = readTransactions()
     }
 
+    fun setSyncedBalance(balance: Int) {
+        val safeBalance = balance.coerceAtLeast(0)
+        prefs.edit()
+            .putInt(key("star_balance"), safeBalance)
+            .putInt(key("total_stars_earned"), safeBalance)
+            .apply()
+        _starBalanceFlow.value = safeBalance
+        _totalEarnedFlow.value = safeBalance
+    }
+
     fun awardStars(amount: Int, source: StarSource, description: String): Int {
         if (amount <= 0) return getBalance()
 

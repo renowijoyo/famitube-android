@@ -282,6 +282,21 @@ fun LoginScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            val appContext = LocalContext.current
+            val versionName = remember(appContext) {
+                try {
+                    appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "1.0.0"
+                } catch (_: Exception) {
+                    "1.0.0"
+                }
+            }
+            Text(
+                text = "FamiTube v$versionName",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

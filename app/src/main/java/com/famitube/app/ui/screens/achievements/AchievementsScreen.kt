@@ -61,6 +61,10 @@ fun AchievementsScreen(
 
     var selectedCategory by remember { mutableStateOf<AchievementCategory?>(null) }
 
+    LaunchedEffect(Unit) {
+        repository.syncAchievementsFromBackend()
+    }
+
     val filteredAchievements = remember(summary.achievements, selectedCategory) {
         val base = if (selectedCategory == null) {
             summary.achievements

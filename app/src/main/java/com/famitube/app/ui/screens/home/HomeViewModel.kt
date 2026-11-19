@@ -39,6 +39,10 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
+            if (repository.isLoggedIn()) {
+                launch { repository.syncAchievementsFromBackend() }
+            }
+
             val remaining = repository.getPreferences().getRemainingMinutes()
             val categoriesResult = repository.getCategories()
             val categories = categoriesResult.getOrDefault(emptyList())
