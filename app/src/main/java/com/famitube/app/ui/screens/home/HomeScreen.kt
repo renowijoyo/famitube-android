@@ -66,8 +66,8 @@ fun HomeScreen(
                 onProfileClick = onNavigateToProfile,
                 onSearchClick = onSearchClick,
                 showSearchButton = !isSimpleMode,
-                onBrowserClick = onNavigateToBrowser,
-                showBrowserButton = true,
+                onBrowserClick = {},
+                showBrowserButton = false,
                 unreadNotifications = unreadNotifications,
                 onNotificationsClick = onNavigateToNotifications,
                 showNotificationsButton = true

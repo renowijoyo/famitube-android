@@ -216,17 +216,6 @@ fun ParentDashboardScreen(
                         Text("Controls", fontWeight = FontWeight.SemiBold)
                     }
                 )
-                val pendingSites = siteRequests.count { it.status == "PENDING" }
-                Tab(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    text = {
-                        Text(
-                            text = if (pendingSites > 0) "Browser ($pendingSites)" else "Browser",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                )
             }
 
             if (errorMessage != null) {
@@ -308,19 +297,6 @@ fun ParentDashboardScreen(
                         onOpenSettings = onOpenSettings,
                         onPreviewChildMode = onPreviewChildMode,
                         onLogout = onLogout
-                    )
-
-                    3 -> BrowserMonitoringTab(
-                        children = children,
-                        siteRequests = siteRequests,
-                        repository = repository,
-                        onChildUpdated = { updatedChild ->
-                            children = children.map { if (it.id == updatedChild.id) updatedChild else it }
-                        },
-                        onSiteRequestDecided = { updatedReq ->
-                            siteRequests = siteRequests.map { if (it.id == updatedReq.id) updatedReq else it }
-                            loadDashboard()
-                        }
                     )
                 }
             }
