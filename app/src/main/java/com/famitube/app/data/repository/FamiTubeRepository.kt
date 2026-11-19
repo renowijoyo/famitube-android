@@ -769,4 +769,45 @@ class FamiTubeRepository(
             Result.failure(e)
         }
     }
+
+    // Notifications & Notification History
+    suspend fun getNotifications(limit: Int = 100): Result<NotificationsDataDto> {
+        return try {
+            val res = api.getNotifications(limit)
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load notifications"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markNotificationRead(id: String): Result<Boolean> {
+        return try {
+            val res = api.markNotificationRead(id)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to mark read"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markAllNotificationsRead(): Result<Boolean> {
+        return try {
+            val res = api.markAllNotificationsRead()
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to mark all read"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearNotifications(): Result<Boolean> {
+        return try {
+            val res = api.clearNotifications()
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to clear notifications"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -217,4 +217,21 @@ interface FamiTubeApiService {
         @Path("requestId") requestId: String,
         @Body body: DecideSiteRequestBody
     ): Response<ApiResponse<KidSiteRequestDto>>
+
+    // Notifications & Notification History
+    @GET("notifications")
+    suspend fun getNotifications(
+        @Query("limit") limit: Int = 100
+    ): ApiResponse<NotificationsDataDto>
+
+    @POST("notifications/{id}/read")
+    suspend fun markNotificationRead(
+        @Path("id") id: String
+    ): ApiResponse<Any>
+
+    @POST("notifications/read-all")
+    suspend fun markAllNotificationsRead(): ApiResponse<Any>
+
+    @DELETE("notifications")
+    suspend fun clearNotifications(): ApiResponse<Any>
 }

@@ -1,4 +1,4 @@
-﻿package com.famitube.app.data.model
+package com.famitube.app.data.model
 
 import com.google.gson.annotations.SerializedName
 
@@ -269,6 +269,26 @@ data class KidSiteRequestDto(
 
 data class DecideSiteRequestBody(
     @SerializedName("decision") val decision: String
+)
+
+// ==========================================
+// NOTIFICATION MODELS
+// ==========================================
+
+data class NotificationItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("userId") val userId: String = "",
+    @SerializedName("type") val type: String = "SYSTEM",
+    @SerializedName("title") val title: String,
+    @SerializedName("message") val message: String,
+    @SerializedName("relatedId") val relatedId: String? = null,
+    @SerializedName("isRead") val isRead: Boolean = false,
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class NotificationsDataDto(
+    @SerializedName("items") val items: List<NotificationItemDto> = emptyList(),
+    @SerializedName("unreadCount") val unreadCount: Int = 0
 )
 
 data class TagDefinitionDto(

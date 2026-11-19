@@ -44,6 +44,8 @@ fun HomeScreen(
     onNavigateToBadges: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToBrowser: () -> Unit = {},
+    unreadNotifications: Int = 0,
+    onNavigateToNotifications: () -> Unit = {},
     onNavigateTab: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -65,7 +67,10 @@ fun HomeScreen(
                 onSearchClick = onSearchClick,
                 showSearchButton = !isSimpleMode,
                 onBrowserClick = onNavigateToBrowser,
-                showBrowserButton = true
+                showBrowserButton = true,
+                unreadNotifications = unreadNotifications,
+                onNotificationsClick = onNavigateToNotifications,
+                showNotificationsButton = true
             )
         }
     ) { paddingValues ->
@@ -522,6 +527,10 @@ private fun topicEmojiForCategory(name: String): String {
         lower.contains("science") || lower.contains("space") -> "🚀"
         lower.contains("math") || lower.contains("coding") -> "🔢"
         lower.contains("stor") || lower.contains("read") -> "📖"
+        lower.contains("game") || lower.contains("gaming") -> "🎮"
+        lower.contains("hobb") || lower.contains("diy") -> "🛠️"
+        lower.contains("sport") || lower.contains("outdoor") -> "⚽"
+        lower.contains("cook") || lower.contains("bak") -> "🧁"
         else -> "🎬"
     }
 }

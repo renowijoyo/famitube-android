@@ -49,7 +49,9 @@ fun ParentDashboardScreen(
     repository: FamiTubeRepository,
     onOpenSettings: () -> Unit,
     onPreviewChildMode: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    unreadNotifications: Int = 0,
+    onOpenNotifications: () -> Unit = {}
 ) {
     val prefs = repository.getPreferences()
     val context = LocalContext.current
@@ -133,6 +135,19 @@ fun ParentDashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenNotifications) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadNotifications > 0) {
+                                    Badge {
+                                        Text(if (unreadNotifications > 9) "9+" else unreadNotifications.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                        }
+                    }
                     IconButton(onClick = { loadDashboard() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }

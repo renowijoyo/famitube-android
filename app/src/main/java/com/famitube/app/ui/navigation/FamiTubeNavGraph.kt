@@ -21,6 +21,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import androidx.compose.ui.platform.LocalContext
+import com.famitube.app.data.local.NotificationHelper
 import com.famitube.app.data.model.Achievement
 import com.famitube.app.data.model.ChannelType
 import com.famitube.app.data.repository.FamiTubeRepository
@@ -28,6 +30,7 @@ import com.famitube.app.ui.components.AchievementUnlockedBanner
 import com.famitube.app.ui.components.FamiTubeBottomBar
 import com.famitube.app.ui.screens.achievements.AchievementsScreen
 import com.famitube.app.ui.screens.browser.BrowserScreen
+import com.famitube.app.ui.screens.notifications.NotificationsScreen
 import kotlinx.coroutines.delay
 import com.famitube.app.ui.screens.channels.ChannelDetailScreen
 import com.famitube.app.ui.screens.channels.ChannelsScreen
@@ -63,9 +66,23 @@ fun FamiTubeNavGraph(
     )
 
     var unlockedBanner by remember { mutableStateOf<Achievement?>(null) }
+    var unreadNotifications by remember { mutableStateOf(0) }
+    val context = LocalContext.current
     val achievementManager = repository.getAchievementManager()
     val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
     val isSimpleMode = ageFilter == "TODDLER" || ageFilter == "YOUNG_KIDS"
+
+    LaunchedEffect(currentRoute) {
+        if (repository.isLoggedIn()) {
+            while (true) {
+                repository.getNotifications(50).onSuccess { data ->
+                    unreadNotifications = data.unreadCount
+                    NotificationHelper.showNewNotifications(context, data.items)
+                }
+                delay(30_000)
+            }
+        }
+    }
 
     LaunchedEffect(achievementManager) {
         achievementManager?.unlockEvents?.collect { achievement ->
@@ -128,6 +145,10 @@ fun FamiTubeNavGraph(
             composable(Screen.ParentDashboard.route) {
                 ParentDashboardScreen(
                     repository = repository,
+                    unreadNotifications = unreadNotifications,
+                    onOpenNotifications = {
+                        navController.navigate(Screen.Notifications.route)
+                    },
                     onOpenSettings = {
                         navController.navigate(Screen.ParentalSettings.route)
                     },
@@ -167,6 +188,10 @@ fun FamiTubeNavGraph(
                     onNavigateToBrowser = {
                         navController.navigate(Screen.Browser.route)
                     },
+                    unreadNotifications = unreadNotifications,
+                    onNavigateToNotifications = {
+                        navController.navigate(Screen.Notifications.route)
+                    },
                     onNavigateTab = { route ->
                         navController.navigate(route) {
                             popUpTo(Screen.Home.route) { saveState = true }
@@ -182,6 +207,15 @@ fun FamiTubeNavGraph(
                 BrowserScreen(
                     repository = repository,
                     onBack = { navController.popBackStack() }
+                )
+            }
+
+            // Notifications & Notification History
+            composable(Screen.Notifications.route) {
+                NotificationsScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                    onUnreadCountChanged = { unreadNotifications = it }
                 )
             }
 
