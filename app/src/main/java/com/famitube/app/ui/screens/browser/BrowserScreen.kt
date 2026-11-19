@@ -179,14 +179,9 @@ fun BrowserScreen(
             trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
             trimmed.contains(".") && !trimmed.contains(" ") -> "https://$trimmed"
             else -> {
-                if (cfg.browserAllowlistOnly) {
-                    // In allowlist-only mode, if kiddle.co is allowed use it, otherwise block search
-                    val encoded = URLEncoder.encode(trimmed, "UTF-8")
-                    "https://www.kiddle.co/s.php?q=$encoded"
-                } else {
-                    val encoded = URLEncoder.encode(trimmed, "UTF-8")
-                    "https://www.kiddle.co/s.php?q=$encoded"
-                }
+                val encoded = URLEncoder.encode(trimmed, "UTF-8")
+                // Use Google with SafeSearch enabled
+                "https://www.google.com/search?safe=active&q=$encoded"
             }
         }
 
