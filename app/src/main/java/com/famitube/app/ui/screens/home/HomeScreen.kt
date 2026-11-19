@@ -43,6 +43,7 @@ fun HomeScreen(
     onSearchClick: () -> Unit,
     onNavigateToBadges: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToBrowser: () -> Unit = {},
     onNavigateTab: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -62,7 +63,9 @@ fun HomeScreen(
                 onStarsClick = onNavigateToBadges,
                 onProfileClick = onNavigateToProfile,
                 onSearchClick = onSearchClick,
-                showSearchButton = !isSimpleMode
+                showSearchButton = !isSimpleMode,
+                onBrowserClick = onNavigateToBrowser,
+                showBrowserButton = true
             )
         }
     ) { paddingValues ->

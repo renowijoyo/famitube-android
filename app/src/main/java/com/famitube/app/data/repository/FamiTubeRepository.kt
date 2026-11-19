@@ -689,4 +689,84 @@ class FamiTubeRepository(
             Result.failure(e)
         }
     }
+
+    // Embedded Browser
+    suspend fun getKidBrowserConfig(): Result<BrowserConfigDto> {
+        return try {
+            val res = api.getKidBrowserConfig()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load browser settings"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun recordKidBrowserHistory(entries: List<BrowserHistoryPostEntry>): Result<Boolean> {
+        if (entries.isEmpty()) return Result.success(true)
+        return try {
+            val res = api.recordKidBrowserHistory(BrowserHistoryBatchRequest(entries))
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to record browser history"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun requestSiteAccess(url: String, domain: String): Result<KidSiteRequestDto> {
+        return try {
+            val response = api.requestSiteAccess(CreateSiteRequestBody(url = url, domain = domain))
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Failed to request site access"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getChildBrowserHistory(childId: String, limit: Int = 200): Result<List<KidBrowserHistoryItemDto>> {
+        return try {
+            val res = api.getChildBrowserHistory(childId, limit)
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load browser history"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearChildBrowserHistory(childId: String): Result<Boolean> {
+        return try {
+            val res = api.clearChildBrowserHistory(childId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to clear browser history"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getParentSiteRequests(): Result<List<KidSiteRequestDto>> {
+        return try {
+            val res = api.getParentSiteRequests()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load site requests"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun decideParentSiteRequest(requestId: String, decision: String): Result<KidSiteRequestDto> {
+        return try {
+            val response = api.decideParentSiteRequest(requestId, DecideSiteRequestBody(decision))
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Failed to decide site request"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

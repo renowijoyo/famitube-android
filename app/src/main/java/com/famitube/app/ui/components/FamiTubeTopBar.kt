@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -33,6 +34,8 @@ fun FamiTubeTopBar(
     onStarsClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     showSearchButton: Boolean = true,
+    onBrowserClick: () -> Unit = {},
+    showBrowserButton: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -113,6 +116,16 @@ fun FamiTubeTopBar(
             }
 
             Spacer(modifier = Modifier.width(6.dp))
+
+            if (showBrowserButton) {
+                IconButton(onClick = onBrowserClick) {
+                    Icon(
+                        imageVector = Icons.Default.Public,
+                        contentDescription = "Safe Browser",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
 
             if (showSearchButton) {
                 IconButton(onClick = onSearchClick) {

@@ -183,4 +183,38 @@ interface FamiTubeApiService {
         @Path("requestId") requestId: String,
         @Body body: DecideVideoRequestBody
     ): Response<ApiResponse<ParentVideoRequestDto>>
+
+    // Embedded Browser Endpoints
+    @GET("kids/browser/config")
+    suspend fun getKidBrowserConfig(): ApiResponse<BrowserConfigDto>
+
+    @POST("kids/browser/history")
+    suspend fun recordKidBrowserHistory(
+        @Body body: BrowserHistoryBatchRequest
+    ): ApiResponse<List<KidBrowserHistoryItemDto>>
+
+    @POST("kids/browser/requests")
+    suspend fun requestSiteAccess(
+        @Body body: CreateSiteRequestBody
+    ): Response<ApiResponse<KidSiteRequestDto>>
+
+    @GET("parent/children/{childId}/browser-history")
+    suspend fun getChildBrowserHistory(
+        @Path("childId") childId: String,
+        @Query("limit") limit: Int = 200
+    ): ApiResponse<List<KidBrowserHistoryItemDto>>
+
+    @DELETE("parent/children/{childId}/browser-history")
+    suspend fun clearChildBrowserHistory(
+        @Path("childId") childId: String
+    ): ApiResponse<Any>
+
+    @GET("parent/site-requests")
+    suspend fun getParentSiteRequests(): ApiResponse<List<KidSiteRequestDto>>
+
+    @POST("parent/site-requests/{requestId}/decide")
+    suspend fun decideParentSiteRequest(
+        @Path("requestId") requestId: String,
+        @Body body: DecideSiteRequestBody
+    ): Response<ApiResponse<KidSiteRequestDto>>
 }

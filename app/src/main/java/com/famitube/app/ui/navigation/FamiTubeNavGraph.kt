@@ -27,6 +27,7 @@ import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.components.AchievementUnlockedBanner
 import com.famitube.app.ui.components.FamiTubeBottomBar
 import com.famitube.app.ui.screens.achievements.AchievementsScreen
+import com.famitube.app.ui.screens.browser.BrowserScreen
 import kotlinx.coroutines.delay
 import com.famitube.app.ui.screens.channels.ChannelDetailScreen
 import com.famitube.app.ui.screens.channels.ChannelsScreen
@@ -163,6 +164,9 @@ fun FamiTubeNavGraph(
                     onNavigateToProfile = {
                         navController.navigate(Screen.Profile.route)
                     },
+                    onNavigateToBrowser = {
+                        navController.navigate(Screen.Browser.route)
+                    },
                     onNavigateTab = { route ->
                         navController.navigate(route) {
                             popUpTo(Screen.Home.route) { saveState = true }
@@ -170,6 +174,14 @@ fun FamiTubeNavGraph(
                             restoreState = true
                         }
                     }
+                )
+            }
+
+            // Safe Embedded Browser
+            composable(Screen.Browser.route) {
+                BrowserScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() }
                 )
             }
 
