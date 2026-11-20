@@ -23,7 +23,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun FavoritesScreen(
     repository: FamiTubeRepository,
-    onVideoClick: (String) -> Unit
+    onVideoClick: (String) -> Unit,
+    onChannelClick: ((String) -> Unit)? = null
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var favoriteVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
@@ -135,7 +136,7 @@ fun FavoritesScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(currentList) { video ->
-                                VideoCard(video = video, onClick = { onVideoClick(video.id) })
+                                VideoCard(video = video, onClick = { onVideoClick(video.id) }, onChannelClick = onChannelClick)
                             }
                         }
                     }

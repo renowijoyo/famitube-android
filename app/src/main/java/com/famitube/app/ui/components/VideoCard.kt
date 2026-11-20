@@ -29,7 +29,8 @@ import com.famitube.app.ui.theme.SurfaceLightDark
 fun VideoCard(
     video: Video,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onChannelClick: ((String) -> Unit)? = null
 ) {
     Card(
         modifier = modifier
@@ -142,25 +143,38 @@ fun VideoCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    AsyncImage(
-                        model = video.channelAvatar,
-                        contentDescription = video.channelTitle,
-                        contentScale = ContentScale.Crop,
+                    val canClickChannel = onChannelClick != null && video.channelId.isNotBlank()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                    )
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(enabled = canClickChannel) {
+                                onChannelClick?.invoke(video.channelId)
+                            }
+                            .padding(vertical = 2.dp)
+                    ) {
+                        AsyncImage(
+                            model = video.channelAvatar,
+                            contentDescription = video.channelTitle,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = video.channelTitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
 
                     Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = video.channelTitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
 
                     // Category Pill
                     Box(

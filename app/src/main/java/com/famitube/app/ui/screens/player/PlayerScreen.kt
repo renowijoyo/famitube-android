@@ -61,7 +61,8 @@ import com.famitube.app.ui.components.YouTubeIFramePlayer
 fun PlayerScreen(
     viewModel: PlayerViewModel,
     onBackClick: () -> Unit,
-    onRelatedVideoClick: (String) -> Unit
+    onRelatedVideoClick: (String) -> Unit,
+    onChannelClick: ((String) -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -311,8 +312,15 @@ fun PlayerScreen(
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
+                                val canClickChannel = onChannelClick != null && video.channelId.isNotBlank()
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable(enabled = canClickChannel) {
+                                            onChannelClick?.invoke(video.channelId)
+                                        }
+                                        .padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AsyncImage(
@@ -333,11 +341,12 @@ fun PlayerScreen(
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
-                                            text = "${video.views} views â€¢ ${video.ageRating.name}",
+                                            text = "${video.views} views • ${video.ageRating.name}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                }
 
                                     // Favorite Button
                                     IconButton(
@@ -386,6 +395,7 @@ fun PlayerScreen(
                                 VideoCard(
                                     video = related,
                                     onClick = { onRelatedVideoClick(related.id) },
+                                    onChannelClick = onChannelClick,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                                 )
                             }

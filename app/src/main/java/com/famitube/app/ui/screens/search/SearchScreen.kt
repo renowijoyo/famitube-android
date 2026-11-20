@@ -46,7 +46,8 @@ private const val YOUTUBE_PAGE_SIZE = 10
 fun SearchScreen(
     repository: FamiTubeRepository,
     onBackClick: () -> Unit,
-    onVideoClick: (String) -> Unit
+    onVideoClick: (String) -> Unit,
+    onChannelClick: ((String) -> Unit)? = null
 ) {
     var query by remember { mutableStateOf("") }
     var curatedResults by remember { mutableStateOf<List<Video>>(emptyList()) }
@@ -244,7 +245,7 @@ fun SearchScreen(
                             }
                         } else {
                             items(visibleCurated, key = { "curated_${it.id}" }) { video ->
-                                VideoCard(video = video, onClick = { onVideoClick(video.id) })
+                                VideoCard(video = video, onClick = { onVideoClick(video.id) }, onChannelClick = onChannelClick)
                             }
 
                             if (curatedResults.size > curatedVisibleCount) {

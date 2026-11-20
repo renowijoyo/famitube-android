@@ -175,6 +175,9 @@ fun FamiTubeNavGraph(
                     onSearchClick = {
                         navController.navigate(Screen.Search.route)
                     },
+                    onChannelClick = { channelId ->
+                        navController.navigate(Screen.ChannelDetail.createRoute(channelId))
+                    },
                     onNavigateToBadges = {
                         navController.navigate(Screen.Achievements.route) {
                             popUpTo(Screen.Home.route) { saveState = true }
@@ -236,16 +239,12 @@ fun FamiTubeNavGraph(
                 ChannelsScreen(
                     repository = repository,
                     onChannelClick = { channel ->
-                        if (channel.channelType == ChannelType.LIVE_TV) {
-                            navController.navigate(Screen.LiveTvPlayer.createRoute(channel.id))
-                        } else {
-                            navController.navigate(Screen.ChannelDetail.createRoute(channel.id))
-                        }
+                        navController.navigate(Screen.ChannelDetail.createRoute(channel.id))
                     }
                 )
             }
 
-            // YouTube-style On-Demand Channel Detail
+            // YouTube-style Channel Detail & Videos Screen
             composable(
                 route = Screen.ChannelDetail.route,
                 arguments = listOf(navArgument("channelId") { type = NavType.StringType })
@@ -257,6 +256,9 @@ fun FamiTubeNavGraph(
                     onBackClick = { navController.popBackStack() },
                     onVideoClick = { videoId ->
                         navController.navigate(Screen.Player.createRoute(videoId))
+                    },
+                    onWatchLive = { liveChannelId ->
+                        navController.navigate(Screen.LiveTvPlayer.createRoute(liveChannelId))
                     }
                 )
             }
@@ -292,6 +294,9 @@ fun FamiTubeNavGraph(
                     repository = repository,
                     onVideoClick = { videoId ->
                         navController.navigate(Screen.Player.createRoute(videoId))
+                    },
+                    onChannelClick = { channelId ->
+                        navController.navigate(Screen.ChannelDetail.createRoute(channelId))
                     }
                 )
             }
@@ -308,6 +313,9 @@ fun FamiTubeNavGraph(
                     onBackClick = { navController.popBackStack() },
                     onVideoClick = { videoId ->
                         navController.navigate(Screen.Player.createRoute(videoId))
+                    },
+                    onChannelClick = { channelId ->
+                        navController.navigate(Screen.ChannelDetail.createRoute(channelId))
                     }
                 )
             }
@@ -326,6 +334,9 @@ fun FamiTubeNavGraph(
                         navController.navigate(Screen.Player.createRoute(relatedId)) {
                             popUpTo(Screen.Home.route)
                         }
+                    },
+                    onChannelClick = { channelId ->
+                        navController.navigate(Screen.ChannelDetail.createRoute(channelId))
                     }
                 )
             }

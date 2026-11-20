@@ -46,7 +46,8 @@ fun HomeScreen(
     onNavigateToBrowser: () -> Unit = {},
     unreadNotifications: Int = 0,
     onNavigateToNotifications: () -> Unit = {},
-    onNavigateTab: (String) -> Unit = {}
+    onNavigateTab: (String) -> Unit = {},
+    onChannelClick: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val starBalance by (viewModel.starBalance?.collectAsState() ?: remember { mutableIntStateOf(0) })
@@ -323,6 +324,7 @@ fun HomeScreen(
                             VideoCard(
                                 video = video,
                                 onClick = { onVideoClick(video.id) },
+                                onChannelClick = onChannelClick,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                             )
                         }
@@ -506,7 +508,8 @@ private fun SimpleKidHomeContent(
                 items(state.videos) { video ->
                     VideoCard(
                         video = video,
-                        onClick = { onVideoClick(video.id) }
+                        onClick = { onVideoClick(video.id) },
+                        onChannelClick = onChannelClick
                     )
                 }
             }

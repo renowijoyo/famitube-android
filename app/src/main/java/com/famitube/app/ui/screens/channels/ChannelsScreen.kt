@@ -181,6 +181,7 @@ fun ChannelsScreen(
             topics = topics,
             allChannels = allChannels,
             savedChannelIds = savedChannels.map { it.id }.toSet(),
+            onChannelClick = onChannelClick,
             onAddChannel = { channel ->
                 scope.launch {
                     val res = repository.addKidSavedChannel(channel.id)
@@ -209,7 +210,8 @@ private fun AddChannelByTopicDialog(
     allChannels: List<Channel>,
     savedChannelIds: Set<String>,
     onAddChannel: (Channel) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onChannelClick: ((Channel) -> Unit)? = null
 ) {
     var topicQuery by remember { mutableStateOf("") }
     var selectedTopic by remember { mutableStateOf<String?>(null) }
@@ -354,7 +356,11 @@ private fun AddChannelByTopicDialog(
                                 val isAdded = savedChannelIds.contains(ch.id)
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    modifier = Modifier.clickable {
+                                        onDismiss()
+                                        onChannelClick?.invoke(ch)
+                                    }
                                 ) {
                                     Row(
                                         modifier = Modifier
