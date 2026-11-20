@@ -120,7 +120,8 @@ fun HomeScreen(
                     state = state,
                     isToddler = ageFilter == "TODDLER",
                     onSelectCategory = { viewModel.selectCategory(it) },
-                    onVideoClick = onVideoClick
+                    onVideoClick = onVideoClick,
+                    onChannelClick = onChannelClick
                 )
             } else {
                 LazyColumn(
@@ -381,7 +382,8 @@ private fun SimpleKidHomeContent(
     state: HomeUiState,
     isToddler: Boolean,
     onSelectCategory: (String) -> Unit,
-    onVideoClick: (String) -> Unit
+    onVideoClick: (String) -> Unit,
+    onChannelClick: (String) -> Unit
 ) {
     val selectedCat = state.selectedCategory
     val tileColors = listOf(PinkPrimary, CyanAccent, MintSuccess, YellowWarning, BlueSecondary)
