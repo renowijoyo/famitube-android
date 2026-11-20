@@ -228,6 +228,19 @@ interface FamiTubeApiService {
         @Path("childId") childId: String
     ): ApiResponse<KidActivityHistoryData>
 
+    @PUT("parent/children/{childId}/youtube-subscriptions/{handle}")
+    suspend fun updateChildYouTubeSubscriptionTrust(
+        @Path("childId") childId: String,
+        @Path("handle") handle: String,
+        @Body body: UpdateYouTubeSubscriptionTrustRequest
+    ): ApiResponse<YouTubeChannelSearchResult>
+
+    @DELETE("parent/children/{childId}/youtube-subscriptions/{handle}")
+    suspend fun deleteChildYouTubeSubscription(
+        @Path("childId") childId: String,
+        @Path("handle") handle: String
+    ): ApiResponse<Any>
+
     @DELETE("parent/children/{childId}/search-history")
     suspend fun clearChildSearchHistory(
         @Path("childId") childId: String

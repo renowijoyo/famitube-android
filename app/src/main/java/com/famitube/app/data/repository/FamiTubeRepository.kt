@@ -698,6 +698,37 @@ class FamiTubeRepository(
         }
     }
 
+    suspend fun updateChildYouTubeSubscriptionTrust(
+        childId: String,
+        handle: String,
+        trustLevel: String
+    ): Result<YouTubeChannelSearchResult> {
+        return try {
+            val res = api.updateChildYouTubeSubscriptionTrust(
+                childId = childId,
+                handle = handle,
+                body = UpdateYouTubeSubscriptionTrustRequest(trustLevel)
+            )
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to update channel trust"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteChildYouTubeSubscription(
+        childId: String,
+        handle: String
+    ): Result<Boolean> {
+        return try {
+            val res = api.deleteChildYouTubeSubscription(childId, handle)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to remove subscription"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateParentGlobalControls(
         controls: GlobalParentalControlsDto
     ): Result<GlobalParentalControlsDto> {

@@ -240,6 +240,9 @@ fun FamiTubeNavGraph(
                     repository = repository,
                     onChannelClick = { channel ->
                         navController.navigate(Screen.ChannelDetail.createRoute(channel.id))
+                    },
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.Player.createRoute(videoId))
                     }
                 )
             }

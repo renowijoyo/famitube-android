@@ -178,7 +178,8 @@ data class YouTubeChannelSearchResult(
     @SerializedName("title") val title: String,
     @SerializedName("avatarUrl") val avatarUrl: String = "",
     @SerializedName("description") val description: String? = null,
-    @SerializedName("isSubscribed") val isSubscribed: Boolean = false
+    @SerializedName("isSubscribed") val isSubscribed: Boolean = false,
+    @SerializedName("trustLevel") val trustLevel: String = "SUPERVISED"
 )
 
 data class YouTubeChannelDetailData(
@@ -435,7 +436,12 @@ data class KidYouTubeSearchHistoryItemDto(
 data class KidActivityHistoryData(
     @SerializedName("searchHistory") val searchHistory: List<KidYouTubeSearchHistoryItemDto> = emptyList(),
     @SerializedName("videoRequests") val videoRequests: List<ParentVideoRequestDto> = emptyList(),
-    @SerializedName("watchHistory") val watchHistory: List<KidHistoryItem> = emptyList()
+    @SerializedName("watchHistory") val watchHistory: List<KidHistoryItem> = emptyList(),
+    @SerializedName("youtubeSubscriptions") val youtubeSubscriptions: List<YouTubeChannelSearchResult> = emptyList()
+)
+
+data class UpdateYouTubeSubscriptionTrustRequest(
+    @SerializedName("trustLevel") val trustLevel: String
 )
 
 data class CreateSiteRequestBody(

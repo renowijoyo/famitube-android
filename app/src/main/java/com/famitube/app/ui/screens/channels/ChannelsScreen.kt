@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,10 +36,15 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.famitube.app.data.model.Channel
 import com.famitube.app.data.model.ChannelType
+import com.famitube.app.data.model.YouTubeChannelDetailData
+import com.famitube.app.data.model.YouTubeChannelSearchResult
 import com.famitube.app.data.repository.FamiTubeRepository
+import com.famitube.app.ui.theme.CyanAccent
 import com.famitube.app.ui.theme.GreenSuccess
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
+import com.famitube.app.ui.theme.SurfaceLightDark
+import com.famitube.app.ui.theme.YellowWarning
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
@@ -45,10 +52,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChannelsScreen(
     repository: FamiTubeRepository,
-    onChannelClick: (Channel) -> Unit
+    onChannelClick: (Channel) -> Unit,
+    onVideoClick: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var savedChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
+    var ytSubscribedChannels by remember { mutableStateOf<List<YouTubeChannelSearchResult>>(emptyList()) }
+    var activeYtChannelDetail by remember { mutableStateOf<YouTubeChannelDetailData?>(null) }
+    var isLoadingYtChannel by remember { mutableStateOf(false) }
     var allChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var topics by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -60,21 +71,42 @@ fun ChannelsScreen(
         scope.launch {
             isLoading = true
             val savedDef = async { repository.getKidSavedChannels() }
+            val ytSubsDef = async { repository.getKidYouTubeSubscriptions() }
             val allDef = async { repository.getChannels() }
             val catsDef = async { repository.getCategories() }
 
             val savedList = savedDef.await().getOrDefault(emptyList())
+            val ytList = ytSubsDef.await().getOrDefault(emptyList())
             val allList = allDef.await().getOrDefault(emptyList())
             val cats = catsDef.await().getOrDefault(emptyList())
                 .map { it.name }
                 .filter { it.isNotBlank() && it != "All Videos" }
 
             savedChannels = savedList
+            ytSubscribedChannels = ytList
             allChannels = allList
             topics = (cats + allList.map { it.category })
                 .filter { it.isNotBlank() }
                 .distinct()
             isLoading = false
+        }
+    }
+
+    fun openYtChannelVideos(handle: String) {
+        val norm = if (handle.startsWith("@")) handle else "@$handle"
+        scope.launch {
+            isLoadingYtChannel = true
+            val res = repository.getKidYouTubeChannelVideos(norm)
+            isLoadingYtChannel = false
+            res.onSuccess {
+                activeYtChannelDetail = it
+            }.onFailure { err ->
+                Toast.makeText(
+                    context,
+                    err.localizedMessage ?: "Could not load channel $norm",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
@@ -106,12 +138,175 @@ fun ChannelsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (isLoading) {
+            if (isLoading || isLoadingYtChannel) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = PinkPrimary
                 )
-            } else if (savedChannels.isEmpty()) {
+            } else if (activeYtChannelDetail != null) {
+                val detail = activeYtChannelDetail!!
+                val ch = detail.channel
+                val chVideos = detail.videos
+                val isTrusted = ch.trustLevel == "TRUSTED"
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { activeYtChannelDetail = null },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("← Back to My Channels")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    scope.launch {
+                                        repository.unsubscribeKidYouTubeChannel(ch.handle)
+                                        ytSubscribedChannels = ytSubscribedChannels.filterNot {
+                                            it.handle.equals(ch.handle, ignoreCase = true)
+                                        }
+                                        activeYtChannelDetail = null
+                                        Toast.makeText(context, "Unsubscribed from ${ch.handle}", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Unsubscribe")
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(SurfaceDark)
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = ch.avatarUrl,
+                                contentDescription = ch.handle,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = ch.handle,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = CyanAccent
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isTrusted) "✓ Parent-Trusted" else "Supervised",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isTrusted) GreenSuccess else YellowWarning
+                                    )
+                                }
+                                Text(
+                                    text = "${ch.title} • ${chVideos.size} videos",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(SurfaceDark)
+                                .clickable {
+                                    scope.launch {
+                                        val watchRes = repository.requestOrWatchYouTube(item)
+                                        val data = watchRes.getOrNull()
+                                        if (data != null) {
+                                            if (data.allowed) {
+                                                val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
+                                                onVideoClick?.invoke(targetId)
+                                            } else {
+                                                Toast.makeText(
+                                                    context,
+                                                    data.message ?: "Request sent to parent!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                openYtChannelVideos(ch.handle)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .height(70.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(SurfaceLightDark)
+                            ) {
+                                AsyncImage(
+                                    model = item.thumbnailUrl,
+                                    contentDescription = item.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(26.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val badgeText = when {
+                                    item.isCurated -> "Curated"
+                                    item.approvalStatus == "APPROVED" || item.inHistory || isTrusted -> "✓ Auto-Approved"
+                                    item.approvalStatus == "PENDING" -> "Pending Parent"
+                                    item.approvalStatus == "REJECTED" -> "Declined"
+                                    else -> "Watch / Request"
+                                }
+                                val badgeColor = when {
+                                    badgeText == "Curated" || badgeText == "✓ Auto-Approved" -> GreenSuccess
+                                    badgeText == "Pending Parent" -> YellowWarning
+                                    else -> CyanAccent
+                                }
+                                Text(
+                                    text = badgeText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = badgeColor
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (savedChannels.isEmpty() && ytSubscribedChannels.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -128,7 +323,7 @@ fun ChannelsScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Pick a topic and subscribe to your favorite safe channels.",
+                        text = "Pick a topic and subscribe to your favorite safe channels, or subscribe to @YouTube channels from Search.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -151,25 +346,136 @@ fun ChannelsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(savedChannels, key = { it.id }) { channel ->
-                        ChannelGridCard(
-                            channel = channel,
-                            onClick = { onChannelClick(channel) },
-                            onRemove = {
-                                scope.launch {
-                                    val res = repository.removeKidSavedChannel(channel.id)
-                                    res.onSuccess {
-                                        savedChannels = savedChannels.filterNot { it.id == channel.id }
-                                    }.onFailure { err ->
-                                        Toast.makeText(
-                                            context,
-                                            err.message ?: "Failed to remove channel",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                    if (ytSubscribedChannels.isNotEmpty()) {
+                        item(span = { GridItemSpan(2) }) {
+                            Column {
+                                Text(
+                                    text = "My @YouTube Subscriptions (${ytSubscribedChannels.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = YellowWarning
+                                )
+                                Text(
+                                    text = "Parent-Trusted @channels play immediately; Supervised @channels check parent approval.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                        items(ytSubscribedChannels, key = { "ytsub_${it.handle}" }) { ytCh ->
+                            val isTrusted = ytCh.trustLevel == "TRUSTED"
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { openYtChannelVideos(ytCh.handle) },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+                            ) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                repository.unsubscribeKidYouTubeChannel(ytCh.handle)
+                                                ytSubscribedChannels = ytSubscribedChannels.filterNot {
+                                                    it.handle.equals(ytCh.handle, ignoreCase = true)
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Unsubscribe",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(14.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(
+                                                    if (isTrusted) GreenSuccess.copy(alpha = 0.18f)
+                                                    else YellowWarning.copy(alpha = 0.18f)
+                                                )
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                        ) {
+                                            Text(
+                                                text = if (isTrusted) "✓ TRUSTED" else "SUPERVISED",
+                                                color = if (isTrusted) GreenSuccess else YellowWarning,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        AsyncImage(
+                                            model = ytCh.avatarUrl,
+                                            contentDescription = ytCh.handle,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clip(CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = ytCh.handle,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = CyanAccent,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = ytCh.title,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }
-                        )
+                        }
+                    }
+
+                    if (savedChannels.isNotEmpty()) {
+                        item(span = { GridItemSpan(2) }) {
+                            Text(
+                                text = "Curated Safe Channels (${savedChannels.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GreenSuccess,
+                                modifier = Modifier.padding(top = if (ytSubscribedChannels.isNotEmpty()) 6.dp else 0.dp)
+                            )
+                        }
+                        items(savedChannels, key = { it.id }) { channel ->
+                            ChannelGridCard(
+                                channel = channel,
+                                onClick = { onChannelClick(channel) },
+                                onRemove = {
+                                    scope.launch {
+                                        val res = repository.removeKidSavedChannel(channel.id)
+                                        res.onSuccess {
+                                            savedChannels = savedChannels.filterNot { it.id == channel.id }
+                                        }.onFailure { err ->
+                                            Toast.makeText(
+                                                context,
+                                                err.message ?: "Failed to remove channel",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

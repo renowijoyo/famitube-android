@@ -1521,17 +1521,22 @@ private fun ChildActivityHistoryDialog(
                     Tab(
                         selected = activeTab == 0,
                         onClick = { activeTab = 0 },
-                        text = { Text("Watched (${data.watchHistory.size})", fontSize = 11.sp) }
+                        text = { Text("Watched (${data.watchHistory.size})", fontSize = 10.sp) }
                     )
                     Tab(
                         selected = activeTab == 1,
                         onClick = { activeTab = 1 },
-                        text = { Text("Searches (${data.searchHistory.size})", fontSize = 11.sp) }
+                        text = { Text("Searches (${data.searchHistory.size})", fontSize = 10.sp) }
                     )
                     Tab(
                         selected = activeTab == 2,
                         onClick = { activeTab = 2 },
-                        text = { Text("Requests (${data.videoRequests.size})", fontSize = 11.sp) }
+                        text = { Text("Requests (${data.videoRequests.size})", fontSize = 10.sp) }
+                    )
+                    Tab(
+                        selected = activeTab == 3,
+                        onClick = { activeTab = 3 },
+                        text = { Text("@Channels (${data.youtubeSubscriptions.size})", fontSize = 10.sp) }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1627,7 +1632,7 @@ private fun ChildActivityHistoryDialog(
                                 }
                             }
 
-                            else -> {
+                            2 -> {
                                 if (data.videoRequests.isEmpty()) {
                                     item {
                                         Text(
@@ -1667,6 +1672,98 @@ private fun ChildActivityHistoryDialog(
                                                         fontSize = 10.sp,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            else -> {
+                                if (data.youtubeSubscriptions.isEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "No @YouTube channels subscribed yet.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    items(data.youtubeSubscriptions, key = { "sub_${it.handle}" }) { sub ->
+                                        Card(
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = sub.handle,
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontSize = 13.sp,
+                                                            color = BlueSecondary
+                                                        )
+                                                        Text(
+                                                            text = sub.title,
+                                                            fontSize = 11.sp,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                    }
+                                                    val trustColor = when (sub.trustLevel) {
+                                                        "TRUSTED" -> GreenSuccess
+                                                        "BLOCKED" -> PinkLight
+                                                        else -> YellowWarning
+                                                    }
+                                                    val trustLabel = when (sub.trustLevel) {
+                                                        "TRUSTED" -> "✓ Trusted"
+                                                        "BLOCKED" -> "Blocked"
+                                                        else -> "Supervised"
+                                                    }
+                                                    Text(
+                                                        text = trustLabel,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = trustColor
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    listOf(
+                                                        "TRUSTED" to "Trust (Auto)",
+                                                        "SUPERVISED" to "Supervise",
+                                                        "BLOCKED" to "Block"
+                                                    ).forEach { (level, label) ->
+                                                        val isCurrent = sub.trustLevel == level
+                                                        OutlinedButton(
+                                                            onClick = {
+                                                                if (!isCurrent) {
+                                                                    scope.launch {
+                                                                        repository.updateChildYouTubeSubscriptionTrust(
+                                                                            childId = child.id,
+                                                                            handle = sub.handle,
+                                                                            trustLevel = level
+                                                                        )
+                                                                        loadHistory()
+                                                                    }
+                                                                }
+                                                            },
+                                                            enabled = !isCurrent,
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                            modifier = Modifier.height(30.dp)
+                                                        ) {
+                                                            Text(label, fontSize = 10.sp)
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }

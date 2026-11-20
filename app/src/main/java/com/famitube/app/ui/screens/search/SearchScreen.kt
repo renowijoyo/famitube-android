@@ -326,12 +326,22 @@ fun SearchScreen(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text(
-                                        text = ch.handle,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = CyanAccent
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = ch.handle,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = CyanAccent
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        val isTrusted = ch.trustLevel == "TRUSTED"
+                                        Text(
+                                            text = if (isTrusted) "✓ Parent-Trusted" else "Supervised",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isTrusted) GreenSuccess else YellowWarning
+                                        )
+                                    }
                                     Text(
                                         text = "${ch.title} • ${chVideos.size} videos",
                                         style = MaterialTheme.typography.bodySmall,
@@ -392,7 +402,12 @@ fun SearchScreen(
                                     items(subscribedYtChannels, key = { "sub_${it.handle}" }) { ch ->
                                         AssistChip(
                                             onClick = { openYtChannelVideos(ch.handle) },
-                                            label = { Text(ch.handle, fontWeight = FontWeight.Bold) }
+                                            label = {
+                                                Text(
+                                                    text = if (ch.trustLevel == "TRUSTED") "${ch.handle} ✓" else ch.handle,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                         )
                                     }
                                 }
