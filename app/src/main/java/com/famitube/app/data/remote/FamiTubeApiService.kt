@@ -113,6 +113,24 @@ interface FamiTubeApiService {
         @Body body: YouTubeWatchRequest
     ): Response<ApiResponse<YouTubeWatchData>>
 
+    @GET("kids/youtube-subscriptions")
+    suspend fun getKidYouTubeSubscriptions(): ApiResponse<List<YouTubeChannelSearchResult>>
+
+    @POST("kids/youtube-subscriptions")
+    suspend fun subscribeKidYouTubeChannel(
+        @Body body: SubscribeYouTubeChannelRequest
+    ): ApiResponse<YouTubeChannelSearchResult>
+
+    @DELETE("kids/youtube-subscriptions/{handle}")
+    suspend fun unsubscribeKidYouTubeChannel(
+        @Path("handle") handle: String
+    ): ApiResponse<Any>
+
+    @GET("kids/youtube-channels/{handle}")
+    suspend fun getKidYouTubeChannelVideos(
+        @Path("handle") handle: String
+    ): ApiResponse<YouTubeChannelDetailData>
+
     // Kid Server Watch History
     @GET("kids/history")
     suspend fun getKidHistory(): ApiResponse<List<KidHistoryItem>>
@@ -204,6 +222,21 @@ interface FamiTubeApiService {
         @Path("childId") childId: String,
         @Query("limit") limit: Int = 200
     ): ApiResponse<List<KidBrowserHistoryItemDto>>
+
+    @GET("parent/children/{childId}/activity-history")
+    suspend fun getChildActivityHistory(
+        @Path("childId") childId: String
+    ): ApiResponse<KidActivityHistoryData>
+
+    @DELETE("parent/children/{childId}/search-history")
+    suspend fun clearChildSearchHistory(
+        @Path("childId") childId: String
+    ): ApiResponse<Any>
+
+    @DELETE("parent/children/{childId}/watch-history")
+    suspend fun clearChildWatchHistory(
+        @Path("childId") childId: String
+    ): ApiResponse<Any>
 
     @DELETE("parent/children/{childId}/browser-history")
     suspend fun clearChildBrowserHistory(

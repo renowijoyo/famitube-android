@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.famitube.app.data.model.GlobalParentalControlsDto
+import com.famitube.app.data.model.KidActivityHistoryData
 import com.famitube.app.data.model.KidBrowserHistoryItemDto
 import com.famitube.app.data.model.KidSiteRequestDto
 import com.famitube.app.data.model.ParentChildDto
@@ -67,6 +68,7 @@ fun ParentDashboardScreen(
 
     var showAddChildDialog by remember { mutableStateOf(false) }
     var childToEdit by remember { mutableStateOf<ParentChildDto?>(null) }
+    var childForActivityHistory by remember { mutableStateOf<ParentChildDto?>(null) }
     var childToDelete by remember { mutableStateOf<ParentChildDto?>(null) }
     var busyRequestId by remember { mutableStateOf<String?>(null) }
 
@@ -274,6 +276,7 @@ fun ParentDashboardScreen(
                     1 -> MyKidsTab(
                         children = children,
                         onAddChild = { showAddChildDialog = true },
+                        onViewHistory = { childForActivityHistory = it },
                         onEditOverrides = { childToEdit = it },
                         onDeleteChild = { childToDelete = it }
                     )
@@ -319,6 +322,14 @@ fun ParentDashboardScreen(
                     }
                 }
             }
+        )
+    }
+
+    if (childForActivityHistory != null) {
+        ChildActivityHistoryDialog(
+            child = childForActivityHistory!!,
+            repository = repository,
+            onDismiss = { childForActivityHistory = null }
         )
     }
 
@@ -510,6 +521,7 @@ private fun VideoRequestsTab(
 private fun MyKidsTab(
     children: List<ParentChildDto>,
     onAddChild: () -> Unit,
+    onViewHistory: (ParentChildDto) -> Unit,
     onEditOverrides: (ParentChildDto) -> Unit,
     onDeleteChild: (ParentChildDto) -> Unit
 ) {
@@ -608,6 +620,13 @@ private fun MyKidsTab(
                             style = MaterialTheme.typography.labelSmall,
                             color = if (hasOverrides) PinkPrimary else GreenSuccess,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    IconButton(onClick = { onViewHistory(child) }) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Activity & Search History",
+                            tint = GreenSuccess
                         )
                     }
                     IconButton(onClick = { onEditOverrides(child) }) {
@@ -1456,4 +1475,231 @@ private fun BrowserMonitoringTab(
             }
         }
     }
+}
+
+@Composable
+private fun ChildActivityHistoryDialog(
+    child: ParentChildDto,
+    repository: FamiTubeRepository,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var activeTab by remember { mutableIntStateOf(0) } // 0 = Watch, 1 = Searches, 2 = Requests
+    var isLoading by remember { mutableStateOf(true) }
+    var data by remember { mutableStateOf(KidActivityHistoryData()) }
+
+    fun loadHistory() {
+        scope.launch {
+            isLoading = true
+            repository.getChildActivityHistory(child.id).onSuccess {
+                data = it
+            }
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(child.id) {
+        loadHistory()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "${child.name} • Activity History",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 440.dp)
+            ) {
+                TabRow(selectedTabIndex = activeTab) {
+                    Tab(
+                        selected = activeTab == 0,
+                        onClick = { activeTab = 0 },
+                        text = { Text("Watched (${data.watchHistory.size})", fontSize = 11.sp) }
+                    )
+                    Tab(
+                        selected = activeTab == 1,
+                        onClick = { activeTab = 1 },
+                        text = { Text("Searches (${data.searchHistory.size})", fontSize = 11.sp) }
+                    )
+                    Tab(
+                        selected = activeTab == 2,
+                        onClick = { activeTab = 2 },
+                        text = { Text("Requests (${data.videoRequests.size})", fontSize = 11.sp) }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = PinkPrimary)
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        when (activeTab) {
+                            0 -> {
+                                if (data.watchHistory.isEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "No videos watched yet.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    items(data.watchHistory, key = { it.id }) { item ->
+                                        Card(
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Text(
+                                                    text = item.title,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = "${item.channelTitle} • ${if (item.isApprovedSearch) "Approved Search" else "Curated"}",
+                                                    fontSize = 11.sp,
+                                                    color = BlueSecondary
+                                                )
+                                                if (item.watchedAt.isNotBlank()) {
+                                                    Text(
+                                                        text = item.watchedAt,
+                                                        fontSize = 10.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            1 -> {
+                                if (data.searchHistory.isEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "No YouTube search queries logged yet.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    items(data.searchHistory, key = { it.id }) { item ->
+                                        Card(
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Text(
+                                                    text = "🔍 \"${item.query}\"",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp
+                                                )
+                                                Text(
+                                                    text = "${item.resultsCount} results • ${item.searchedAt}",
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            else -> {
+                                if (data.videoRequests.isEmpty()) {
+                                    item {
+                                        Text(
+                                            text = "No YouTube video requests yet.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    items(data.videoRequests, key = { it.id }) { req ->
+                                        Card(
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Text(
+                                                    text = req.title,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = "${req.channelTitle} • Status: ${req.status}",
+                                                    fontSize = 11.sp,
+                                                    color = when (req.status) {
+                                                        "APPROVED" -> GreenSuccess
+                                                        "REJECTED" -> PinkLight
+                                                        else -> YellowWarning
+                                                    }
+                                                )
+                                                if (req.createdAt.isNotBlank()) {
+                                                    Text(
+                                                        text = req.createdAt,
+                                                        fontSize = 10.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        dismissButton = {
+            if (activeTab == 0 || activeTab == 1) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            if (activeTab == 0) {
+                                repository.clearChildWatchHistory(child.id)
+                            } else {
+                                repository.clearChildSearchHistory(child.id)
+                            }
+                            loadHistory()
+                        }
+                    }
+                ) {
+                    Text("Clear Tab", color = PinkLight)
+                }
+            }
+        }
+    )
 }

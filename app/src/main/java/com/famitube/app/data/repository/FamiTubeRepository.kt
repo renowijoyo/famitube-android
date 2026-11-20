@@ -518,6 +518,54 @@ class FamiTubeRepository(
         }
     }
 
+    suspend fun getKidYouTubeSubscriptions(): Result<List<YouTubeChannelSearchResult>> {
+        if (!isLoggedIn()) return Result.success(emptyList())
+        return try {
+            val res = api.getKidYouTubeSubscriptions()
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.success(emptyList())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun subscribeKidYouTubeChannel(ch: YouTubeChannelSearchResult): Result<YouTubeChannelSearchResult> {
+        return try {
+            val res = api.subscribeKidYouTubeChannel(
+                SubscribeYouTubeChannelRequest(
+                    handle = ch.handle,
+                    channelId = ch.channelId,
+                    title = ch.title,
+                    avatarUrl = ch.avatarUrl
+                )
+            )
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to subscribe"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unsubscribeKidYouTubeChannel(handle: String): Result<Boolean> {
+        return try {
+            val res = api.unsubscribeKidYouTubeChannel(handle)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to unsubscribe"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getKidYouTubeChannelVideos(handle: String): Result<YouTubeChannelDetailData> {
+        return try {
+            val res = api.getKidYouTubeChannelVideos(handle)
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load channel videos"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun requestOrWatchYouTube(item: YouTubeSearchResult): Result<YouTubeWatchData> {
         return try {
             val response = api.requestOrWatchYouTube(
@@ -615,6 +663,36 @@ class FamiTubeRepository(
             val res = api.getParentGlobalControls()
             if (res.success && res.data != null) Result.success(res.data)
             else Result.failure(Exception(res.message ?: "Failed to load global controls"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getChildActivityHistory(childId: String): Result<KidActivityHistoryData> {
+        return try {
+            val res = api.getChildActivityHistory(childId)
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load activity history"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearChildSearchHistory(childId: String): Result<Boolean> {
+        return try {
+            val res = api.clearChildSearchHistory(childId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to clear search history"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearChildWatchHistory(childId: String): Result<Boolean> {
+        return try {
+            val res = api.clearChildWatchHistory(childId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to clear watch history"))
         } catch (e: Exception) {
             Result.failure(e)
         }

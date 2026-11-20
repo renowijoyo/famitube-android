@@ -172,8 +172,30 @@ data class YouTubeSearchResult(
     @SerializedName("inHistory") val inHistory: Boolean = false
 )
 
+data class YouTubeChannelSearchResult(
+    @SerializedName("handle") val handle: String,
+    @SerializedName("channelId") val channelId: String? = null,
+    @SerializedName("title") val title: String,
+    @SerializedName("avatarUrl") val avatarUrl: String = "",
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("isSubscribed") val isSubscribed: Boolean = false
+)
+
+data class YouTubeChannelDetailData(
+    @SerializedName("channel") val channel: YouTubeChannelSearchResult,
+    @SerializedName("videos") val videos: List<YouTubeSearchResult> = emptyList()
+)
+
+data class SubscribeYouTubeChannelRequest(
+    @SerializedName("handle") val handle: String,
+    @SerializedName("channelId") val channelId: String? = null,
+    @SerializedName("title") val title: String,
+    @SerializedName("avatarUrl") val avatarUrl: String
+)
+
 data class YouTubeSearchData(
     @SerializedName("results") val results: List<YouTubeSearchResult> = emptyList(),
+    @SerializedName("channels") val channels: List<YouTubeChannelSearchResult> = emptyList(),
     @SerializedName("searchSettings") val searchSettings: SearchSettings = SearchSettings()
 )
 
@@ -399,6 +421,21 @@ data class KidBrowserHistoryItemDto(
     @SerializedName("title") val title: String,
     @SerializedName("blocked") val blocked: Boolean = false,
     @SerializedName("visitedAt") val visitedAt: String = ""
+)
+
+data class KidYouTubeSearchHistoryItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("kidId") val kidId: String = "",
+    @SerializedName("query") val query: String,
+    @SerializedName("resultsCount") val resultsCount: Int = 0,
+    @SerializedName("regionCode") val regionCode: String? = null,
+    @SerializedName("searchedAt") val searchedAt: String = ""
+)
+
+data class KidActivityHistoryData(
+    @SerializedName("searchHistory") val searchHistory: List<KidYouTubeSearchHistoryItemDto> = emptyList(),
+    @SerializedName("videoRequests") val videoRequests: List<ParentVideoRequestDto> = emptyList(),
+    @SerializedName("watchHistory") val watchHistory: List<KidHistoryItem> = emptyList()
 )
 
 data class CreateSiteRequestBody(

@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,6 +31,8 @@ import coil.compose.AsyncImage
 import com.famitube.app.data.model.SearchSettings
 import com.famitube.app.data.model.StarCosts
 import com.famitube.app.data.model.Video
+import com.famitube.app.data.model.YouTubeChannelDetailData
+import com.famitube.app.data.model.YouTubeChannelSearchResult
 import com.famitube.app.data.model.YouTubeSearchResult
 import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.components.VideoCard
@@ -52,6 +56,10 @@ fun SearchScreen(
     var query by remember { mutableStateOf("") }
     var curatedResults by remember { mutableStateOf<List<Video>>(emptyList()) }
     var ytResults by remember { mutableStateOf<List<YouTubeSearchResult>>(emptyList()) }
+    var ytChannels by remember { mutableStateOf<List<YouTubeChannelSearchResult>>(emptyList()) }
+    var subscribedYtChannels by remember { mutableStateOf<List<YouTubeChannelSearchResult>>(emptyList()) }
+    var activeYtChannelDetail by remember { mutableStateOf<YouTubeChannelDetailData?>(null) }
+    var isLoadingYtChannel by remember { mutableStateOf(false) }
     var curatedVisibleCount by remember { mutableIntStateOf(CURATED_PAGE_SIZE) }
     var ytVisibleCount by remember { mutableIntStateOf(YOUTUBE_PAGE_SIZE) }
     var ytSettings by remember { mutableStateOf<SearchSettings?>(null) }
@@ -74,12 +82,62 @@ fun SearchScreen(
         }
     }
 
+    fun refreshYtSubscriptions() {
+        if (!repository.isLoggedIn()) return
+        scope.launch {
+            subscribedYtChannels = repository.getKidYouTubeSubscriptions().getOrDefault(emptyList())
+            val subSet = subscribedYtChannels.map { it.handle.lowercase() }.toSet()
+            ytChannels = ytChannels.map { it.copy(isSubscribed = it.handle.lowercase() in subSet) }
+            activeYtChannelDetail?.let { detail ->
+                activeYtChannelDetail = detail.copy(
+                    channel = detail.channel.copy(
+                        isSubscribed = detail.channel.handle.lowercase() in subSet
+                    )
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshYtSubscriptions()
+    }
+
+    fun toggleYtChannelSubscription(ch: YouTubeChannelSearchResult) {
+        scope.launch {
+            val isSub = subscribedYtChannels.any { it.handle.equals(ch.handle, ignoreCase = true) } || ch.isSubscribed
+            if (isSub) {
+                repository.unsubscribeKidYouTubeChannel(ch.handle)
+                statusMessage = "Unsubscribed from ${ch.handle}"
+            } else {
+                repository.subscribeKidYouTubeChannel(ch)
+                statusMessage = "Subscribed to ${ch.handle}"
+            }
+            refreshYtSubscriptions()
+        }
+    }
+
+    fun openYtChannelVideos(handle: String) {
+        val norm = if (handle.startsWith("@")) handle else "@$handle"
+        scope.launch {
+            isLoadingYtChannel = true
+            val res = repository.getKidYouTubeChannelVideos(norm)
+            isLoadingYtChannel = false
+            res.onSuccess {
+                activeYtChannelDetail = it
+            }.onFailure { err ->
+                statusMessage = err.localizedMessage ?: "Could not load channel $norm"
+            }
+        }
+    }
+
     fun performSearch(text: String, immediate: Boolean = false) {
         searchJob?.cancel()
         val trimmed = text.trim()
         if (trimmed.isBlank()) {
             curatedResults = emptyList()
             ytResults = emptyList()
+            ytChannels = emptyList()
+            activeYtChannelDetail = null
             ytError = null
             curatedVisibleCount = CURATED_PAGE_SIZE
             ytVisibleCount = YOUTUBE_PAGE_SIZE
@@ -112,13 +170,17 @@ fun SearchScreen(
                 if (ytRes.isSuccess) {
                     val data = ytRes.getOrNull()
                     ytResults = data?.results ?: emptyList()
+                    ytChannels = data?.channels ?: emptyList()
+                    activeYtChannelDetail = null
                     ytSettings = data?.searchSettings
                 } else {
                     ytResults = emptyList()
+                    ytChannels = emptyList()
                     ytError = ytRes.exceptionOrNull()?.localizedMessage ?: "YouTube search unavailable"
                 }
             } else {
                 ytResults = emptyList()
+                ytChannels = emptyList()
             }
 
             isSearching = false
@@ -202,17 +264,145 @@ fun SearchScreen(
                 .padding(paddingValues)
         ) {
             when {
-                isSearching -> {
+                isSearching || isLoadingYtChannel -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
                         color = PinkPrimary
                     )
                 }
+                activeYtChannelDetail != null -> {
+                    val detail = activeYtChannelDetail!!
+                    val ch = detail.channel
+                    val chVideos = detail.videos
+                    val isSub = subscribedYtChannels.any { it.handle.equals(ch.handle, ignoreCase = true) } || ch.isSubscribed
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(
+                                    onClick = { activeYtChannelDetail = null },
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("← Back to Search")
+                                }
+                                Button(
+                                    onClick = { toggleYtChannelSubscription(ch) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isSub) SurfaceLightDark else PinkPrimary
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text(
+                                        text = if (isSub) "Subscribed" else "Subscribe",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = ch.avatarUrl,
+                                    contentDescription = ch.handle,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = ch.handle,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = CyanAccent
+                                    )
+                                    Text(
+                                        text = "${ch.title} • ${chVideos.size} videos",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
+                            val needsApprovalRequest = ytSettings?.searchRequireApproval == true &&
+                                !item.isCurated &&
+                                item.approvalStatus != "APPROVED" &&
+                                !item.inHistory &&
+                                item.approvalStatus != "PENDING"
+
+                            YouTubeSearchResultCard(
+                                item = item,
+                                showRequestCost = needsApprovalRequest,
+                                onClick = {
+                                    if (needsApprovalRequest) {
+                                        if (starPointsManager != null && !starPointsManager.canAfford(StarCosts.VIDEO_REQUEST)) {
+                                            statusMessage = "Need ${StarCosts.VIDEO_REQUEST} ⭐ to request a video! Earn stars from Badges or ask a parent."
+                                        } else {
+                                            pendingRequestItem = item
+                                        }
+                                    } else {
+                                        scope.launch {
+                                            val watchRes = repository.requestOrWatchYouTube(item)
+                                            val data = watchRes.getOrNull()
+                                            if (data != null) {
+                                                if (data.allowed) {
+                                                    val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
+                                                    onVideoClick(targetId)
+                                                } else {
+                                                    statusMessage = data.message ?: "Request sent to parent!"
+                                                    openYtChannelVideos(ch.handle)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
                 query.isBlank() -> {
-                    EmptySearchState(
-                        title = "Search for Videos",
-                        subtitle = "Type a topic or title above to find curated safe videos and YouTube results."
-                    )
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (subscribedYtChannels.isNotEmpty()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "My Subscribed YouTube Channels (@)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = YellowWarning
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(subscribedYtChannels, key = { "sub_${it.handle}" }) { ch ->
+                                        AssistChip(
+                                            onClick = { openYtChannelVideos(ch.handle) },
+                                            label = { Text(ch.handle, fontWeight = FontWeight.Bold) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        EmptySearchState(
+                            title = "Search for Videos & @Channels",
+                            subtitle = "Type a topic or @channel above to find curated safe videos, YouTube channels, and videos."
+                        )
+                    }
                 }
                 else -> {
                     val visibleCurated = curatedResults.take(curatedVisibleCount)
@@ -266,9 +456,75 @@ fun SearchScreen(
                         }
 
                         // ==========================================
-                        // PART 2: YOUTUBE VIDEOS (10 best match + Show More)
+                        // PART 2: YOUTUBE CHANNELS (@) & VIDEOS
                         // ==========================================
                         if (repository.isLoggedIn()) {
+                            if (ytChannels.isNotEmpty()) {
+                                item {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    SearchSectionHeader(
+                                        title = "YouTube Channels (@)",
+                                        countText = "${ytChannels.size} channels",
+                                        accentColor = PinkPrimary
+                                    )
+                                }
+                                items(ytChannels, key = { "yt_chan_${it.handle}" }) { ch ->
+                                    val isSub = subscribedYtChannels.any { it.handle.equals(ch.handle, ignoreCase = true) } || ch.isSubscribed
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .clickable { openYtChannelVideos(ch.handle) }
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        AsyncImage(
+                                            model = ch.avatarUrl,
+                                            contentDescription = ch.handle,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = ch.handle,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = CyanAccent,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = ch.title,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = { toggleYtChannelSubscription(ch) },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isSub) SurfaceLightDark else PinkPrimary
+                                            ),
+                                            shape = RoundedCornerShape(10.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = if (isSub) "Subscribed" else "Subscribe",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
                             item {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 SearchSectionHeader(
