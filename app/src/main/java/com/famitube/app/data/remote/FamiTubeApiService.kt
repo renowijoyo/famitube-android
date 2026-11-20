@@ -131,6 +131,12 @@ interface FamiTubeApiService {
         @Path("handle") handle: String
     ): ApiResponse<YouTubeChannelDetailData>
 
+    @GET("kids/youtube-playlists/{playlistId}")
+    suspend fun getKidYouTubePlaylistVideos(
+        @Path("playlistId") playlistId: String,
+        @Query("handle") handle: String? = null
+    ): ApiResponse<YouTubePlaylistDetailData>
+
     // Kid Server Watch History
     @GET("kids/history")
     suspend fun getKidHistory(): ApiResponse<List<KidHistoryItem>>

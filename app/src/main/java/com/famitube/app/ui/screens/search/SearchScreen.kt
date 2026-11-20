@@ -33,6 +33,7 @@ import com.famitube.app.data.model.StarCosts
 import com.famitube.app.data.model.Video
 import com.famitube.app.data.model.YouTubeChannelDetailData
 import com.famitube.app.data.model.YouTubeChannelSearchResult
+import com.famitube.app.data.model.YouTubePlaylistDetailData
 import com.famitube.app.data.model.YouTubeSearchResult
 import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.components.VideoCard
@@ -59,6 +60,8 @@ fun SearchScreen(
     var ytChannels by remember { mutableStateOf<List<YouTubeChannelSearchResult>>(emptyList()) }
     var subscribedYtChannels by remember { mutableStateOf<List<YouTubeChannelSearchResult>>(emptyList()) }
     var activeYtChannelDetail by remember { mutableStateOf<YouTubeChannelDetailData?>(null) }
+    var activeYtChannelTab by remember { mutableIntStateOf(0) } // 0 = Videos, 1 = Playlists
+    var activeYtPlaylistDetail by remember { mutableStateOf<YouTubePlaylistDetailData?>(null) }
     var isLoadingYtChannel by remember { mutableStateOf(false) }
     var curatedVisibleCount by remember { mutableIntStateOf(CURATED_PAGE_SIZE) }
     var ytVisibleCount by remember { mutableIntStateOf(YOUTUBE_PAGE_SIZE) }
@@ -124,8 +127,23 @@ fun SearchScreen(
             isLoadingYtChannel = false
             res.onSuccess {
                 activeYtChannelDetail = it
+                activeYtChannelTab = 0
+                activeYtPlaylistDetail = null
             }.onFailure { err ->
                 statusMessage = err.localizedMessage ?: "Could not load channel $norm"
+            }
+        }
+    }
+
+    fun openYtPlaylistVideos(playlistId: String, handle: String) {
+        scope.launch {
+            isLoadingYtChannel = true
+            val res = repository.getKidYouTubePlaylistVideos(playlistId, handle)
+            isLoadingYtChannel = false
+            res.onSuccess {
+                activeYtPlaylistDetail = it
+            }.onFailure { err ->
+                statusMessage = err.localizedMessage ?: "Could not load playlist"
             }
         }
     }
@@ -274,6 +292,7 @@ fun SearchScreen(
                     val detail = activeYtChannelDetail!!
                     val ch = detail.channel
                     val chVideos = detail.videos
+                    val chPlaylists = detail.playlists
                     val isSub = subscribedYtChannels.any { it.handle.equals(ch.handle, ignoreCase = true) } || ch.isSubscribed
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -287,10 +306,16 @@ fun SearchScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 OutlinedButton(
-                                    onClick = { activeYtChannelDetail = null },
+                                    onClick = {
+                                        if (activeYtPlaylistDetail != null) {
+                                            activeYtPlaylistDetail = null
+                                        } else {
+                                            activeYtChannelDetail = null
+                                        }
+                                    },
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
-                                    Text("← Back to Search")
+                                    Text(if (activeYtPlaylistDetail != null) "← Back to Playlists" else "← Back to Search")
                                 }
                                 Button(
                                     onClick = { toggleYtChannelSubscription(ch) },
@@ -343,47 +368,183 @@ fun SearchScreen(
                                         )
                                     }
                                     Text(
-                                        text = "${ch.title} • ${chVideos.size} videos",
+                                        text = "${ch.title} • ${chVideos.size} videos • ${chPlaylists.size} playlists",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
-                        items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
-                            val needsApprovalRequest = ytSettings?.searchRequireApproval == true &&
-                                !item.isCurated &&
-                                item.approvalStatus != "APPROVED" &&
-                                !item.inHistory &&
-                                item.approvalStatus != "PENDING"
+                        item {
+                            TabRow(selectedTabIndex = if (activeYtPlaylistDetail != null) 1 else activeYtChannelTab) {
+                                Tab(
+                                    selected = activeYtPlaylistDetail == null && activeYtChannelTab == 0,
+                                    onClick = {
+                                        activeYtChannelTab = 0
+                                        activeYtPlaylistDetail = null
+                                    },
+                                    text = { Text("Videos (${chVideos.size})", fontWeight = FontWeight.Bold) }
+                                )
+                                Tab(
+                                    selected = activeYtPlaylistDetail != null || activeYtChannelTab == 1,
+                                    onClick = {
+                                        activeYtChannelTab = 1
+                                        activeYtPlaylistDetail = null
+                                    },
+                                    text = { Text("Playlists (${chPlaylists.size})", fontWeight = FontWeight.Bold) }
+                                )
+                            }
+                        }
+                        if (activeYtPlaylistDetail != null) {
+                            val plDetail = activeYtPlaylistDetail!!
+                            item {
+                                Text(
+                                    text = "Playlist: ${plDetail.title} (${plDetail.videos.size} videos)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = YellowWarning
+                                )
+                            }
+                            items(plDetail.videos, key = { "pl_yt_${it.youtubeVideoId}" }) { item ->
+                                val needsApprovalRequest = ytSettings?.searchRequireApproval == true &&
+                                    !item.isCurated &&
+                                    item.approvalStatus != "APPROVED" &&
+                                    !item.inHistory &&
+                                    item.approvalStatus != "PENDING"
 
-                            YouTubeSearchResultCard(
-                                item = item,
-                                showRequestCost = needsApprovalRequest,
-                                onClick = {
-                                    if (needsApprovalRequest) {
-                                        if (starPointsManager != null && !starPointsManager.canAfford(StarCosts.VIDEO_REQUEST)) {
-                                            statusMessage = "Need ${StarCosts.VIDEO_REQUEST} ⭐ to request a video! Earn stars from Badges or ask a parent."
+                                YouTubeSearchResultCard(
+                                    item = item,
+                                    showRequestCost = needsApprovalRequest,
+                                    onClick = {
+                                        if (needsApprovalRequest) {
+                                            if (starPointsManager != null && !starPointsManager.canAfford(StarCosts.VIDEO_REQUEST)) {
+                                                statusMessage = "Need ${StarCosts.VIDEO_REQUEST} ⭐ to request a video! Earn stars from Badges or ask a parent."
+                                            } else {
+                                                pendingRequestItem = item
+                                            }
                                         } else {
-                                            pendingRequestItem = item
-                                        }
-                                    } else {
-                                        scope.launch {
-                                            val watchRes = repository.requestOrWatchYouTube(item)
-                                            val data = watchRes.getOrNull()
-                                            if (data != null) {
-                                                if (data.allowed) {
-                                                    val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
-                                                    onVideoClick(targetId)
-                                                } else {
-                                                    statusMessage = data.message ?: "Request sent to parent!"
-                                                    openYtChannelVideos(ch.handle)
+                                            scope.launch {
+                                                val watchRes = repository.requestOrWatchYouTube(item)
+                                                val data = watchRes.getOrNull()
+                                                if (data != null) {
+                                                    if (data.allowed) {
+                                                        val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
+                                                        onVideoClick(targetId)
+                                                    } else {
+                                                        statusMessage = data.message ?: "Request sent to parent!"
+                                                        openYtPlaylistVideos(plDetail.playlistId, ch.handle)
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                )
+                            }
+                        } else if (activeYtChannelTab == 1) {
+                            if (chPlaylists.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "No playlists found for this channel.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextSecondary
+                                    )
                                 }
-                            )
+                            } else {
+                                items(chPlaylists, key = { "ch_pl_${it.playlistId}" }) { pl ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .clickable { openYtPlaylistVideos(pl.playlistId, ch.handle) }
+                                            .padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(128.dp)
+                                                .height(76.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(SurfaceLightDark)
+                                        ) {
+                                            AsyncImage(
+                                                model = pl.thumbnailUrl,
+                                                contentDescription = pl.title,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomEnd)
+                                                    .padding(4.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(Color.Black.copy(alpha = 0.75f))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${pl.videoCount} videos",
+                                                    fontSize = 10.sp,
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = pl.title,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Tap to view playlist videos",
+                                                fontSize = 11.sp,
+                                                color = CyanAccent,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
+                                val needsApprovalRequest = ytSettings?.searchRequireApproval == true &&
+                                    !item.isCurated &&
+                                    item.approvalStatus != "APPROVED" &&
+                                    !item.inHistory &&
+                                    item.approvalStatus != "PENDING"
+
+                                YouTubeSearchResultCard(
+                                    item = item,
+                                    showRequestCost = needsApprovalRequest,
+                                    onClick = {
+                                        if (needsApprovalRequest) {
+                                            if (starPointsManager != null && !starPointsManager.canAfford(StarCosts.VIDEO_REQUEST)) {
+                                                statusMessage = "Need ${StarCosts.VIDEO_REQUEST} ⭐ to request a video! Earn stars from Badges or ask a parent."
+                                            } else {
+                                                pendingRequestItem = item
+                                            }
+                                        } else {
+                                            scope.launch {
+                                                val watchRes = repository.requestOrWatchYouTube(item)
+                                                val data = watchRes.getOrNull()
+                                                if (data != null) {
+                                                    if (data.allowed) {
+                                                        val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
+                                                        onVideoClick(targetId)
+                                                    } else {
+                                                        statusMessage = data.message ?: "Request sent to parent!"
+                                                        openYtChannelVideos(ch.handle)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }

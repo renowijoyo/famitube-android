@@ -566,6 +566,19 @@ class FamiTubeRepository(
         }
     }
 
+    suspend fun getKidYouTubePlaylistVideos(
+        playlistId: String,
+        handle: String? = null
+    ): Result<YouTubePlaylistDetailData> {
+        return try {
+            val res = api.getKidYouTubePlaylistVideos(playlistId, handle)
+            if (res.success && res.data != null) Result.success(res.data)
+            else Result.failure(Exception(res.message ?: "Failed to load playlist videos"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun requestOrWatchYouTube(item: YouTubeSearchResult): Result<YouTubeWatchData> {
         return try {
             val response = api.requestOrWatchYouTube(

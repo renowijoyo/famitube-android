@@ -182,8 +182,23 @@ data class YouTubeChannelSearchResult(
     @SerializedName("trustLevel") val trustLevel: String = "SUPERVISED"
 )
 
+data class YouTubeChannelPlaylistDto(
+    @SerializedName("playlistId") val playlistId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("thumbnailUrl") val thumbnailUrl: String = "",
+    @SerializedName("videoCount") val videoCount: Int = 0
+)
+
 data class YouTubeChannelDetailData(
     @SerializedName("channel") val channel: YouTubeChannelSearchResult,
+    @SerializedName("videos") val videos: List<YouTubeSearchResult> = emptyList(),
+    @SerializedName("playlists") val playlists: List<YouTubeChannelPlaylistDto> = emptyList()
+)
+
+data class YouTubePlaylistDetailData(
+    @SerializedName("playlistId") val playlistId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("handle") val handle: String? = null,
     @SerializedName("videos") val videos: List<YouTubeSearchResult> = emptyList()
 )
 

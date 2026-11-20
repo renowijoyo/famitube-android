@@ -38,6 +38,7 @@ import com.famitube.app.data.model.Channel
 import com.famitube.app.data.model.ChannelType
 import com.famitube.app.data.model.YouTubeChannelDetailData
 import com.famitube.app.data.model.YouTubeChannelSearchResult
+import com.famitube.app.data.model.YouTubePlaylistDetailData
 import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.theme.CyanAccent
 import com.famitube.app.ui.theme.GreenSuccess
@@ -59,6 +60,8 @@ fun ChannelsScreen(
     var savedChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var ytSubscribedChannels by remember { mutableStateOf<List<YouTubeChannelSearchResult>>(emptyList()) }
     var activeYtChannelDetail by remember { mutableStateOf<YouTubeChannelDetailData?>(null) }
+    var activeYtChannelTab by remember { mutableIntStateOf(0) } // 0 = Videos, 1 = Playlists
+    var activeYtPlaylistDetail by remember { mutableStateOf<YouTubePlaylistDetailData?>(null) }
     var isLoadingYtChannel by remember { mutableStateOf(false) }
     var allChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var topics by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -100,10 +103,29 @@ fun ChannelsScreen(
             isLoadingYtChannel = false
             res.onSuccess {
                 activeYtChannelDetail = it
+                activeYtChannelTab = 0
+                activeYtPlaylistDetail = null
             }.onFailure { err ->
                 Toast.makeText(
                     context,
                     err.localizedMessage ?: "Could not load channel $norm",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    fun openYtPlaylistVideos(playlistId: String, handle: String) {
+        scope.launch {
+            isLoadingYtChannel = true
+            val res = repository.getKidYouTubePlaylistVideos(playlistId, handle)
+            isLoadingYtChannel = false
+            res.onSuccess {
+                activeYtPlaylistDetail = it
+            }.onFailure { err ->
+                Toast.makeText(
+                    context,
+                    err.localizedMessage ?: "Could not load playlist",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -147,6 +169,7 @@ fun ChannelsScreen(
                 val detail = activeYtChannelDetail!!
                 val ch = detail.channel
                 val chVideos = detail.videos
+                val chPlaylists = detail.playlists
                 val isTrusted = ch.trustLevel == "TRUSTED"
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -160,10 +183,16 @@ fun ChannelsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             OutlinedButton(
-                                onClick = { activeYtChannelDetail = null },
+                                onClick = {
+                                    if (activeYtPlaylistDetail != null) {
+                                        activeYtPlaylistDetail = null
+                                    } else {
+                                        activeYtChannelDetail = null
+                                    }
+                                },
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text("← Back to My Channels")
+                                Text(if (activeYtPlaylistDetail != null) "← Back to Playlists" else "← Back to My Channels")
                             }
                             OutlinedButton(
                                 onClick = {
@@ -173,6 +202,7 @@ fun ChannelsScreen(
                                             it.handle.equals(ch.handle, ignoreCase = true)
                                         }
                                         activeYtChannelDetail = null
+                                        activeYtPlaylistDetail = null
                                         Toast.makeText(context, "Unsubscribed from ${ch.handle}", Toast.LENGTH_SHORT).show()
                                     }
                                 },
@@ -217,91 +247,273 @@ fun ChannelsScreen(
                                     )
                                 }
                                 Text(
-                                    text = "${ch.title} • ${chVideos.size} videos",
+                                    text = "${ch.title} • ${chVideos.size} videos • ${chPlaylists.size} playlists",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
-                    items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(SurfaceDark)
-                                .clickable {
-                                    scope.launch {
-                                        val watchRes = repository.requestOrWatchYouTube(item)
-                                        val data = watchRes.getOrNull()
-                                        if (data != null) {
-                                            if (data.allowed) {
-                                                val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
-                                                onVideoClick?.invoke(targetId)
-                                            } else {
-                                                Toast.makeText(
-                                                    context,
-                                                    data.message ?: "Request sent to parent!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                openYtChannelVideos(ch.handle)
+                    item {
+                        TabRow(selectedTabIndex = if (activeYtPlaylistDetail != null) 1 else activeYtChannelTab) {
+                            Tab(
+                                selected = activeYtPlaylistDetail == null && activeYtChannelTab == 0,
+                                onClick = {
+                                    activeYtChannelTab = 0
+                                    activeYtPlaylistDetail = null
+                                },
+                                text = { Text("Videos (${chVideos.size})", fontWeight = FontWeight.Bold) }
+                            )
+                            Tab(
+                                selected = activeYtPlaylistDetail != null || activeYtChannelTab == 1,
+                                onClick = {
+                                    activeYtChannelTab = 1
+                                    activeYtPlaylistDetail = null
+                                },
+                                text = { Text("Playlists (${chPlaylists.size})", fontWeight = FontWeight.Bold) }
+                            )
+                        }
+                    }
+                    if (activeYtPlaylistDetail != null) {
+                        val plDetail = activeYtPlaylistDetail!!
+                        item {
+                            Text(
+                                text = "Playlist: ${plDetail.title} (${plDetail.videos.size} videos)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = YellowWarning
+                            )
+                        }
+                        items(plDetail.videos, key = { "pl_yt_${it.youtubeVideoId}" }) { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(SurfaceDark)
+                                    .clickable {
+                                        scope.launch {
+                                            val watchRes = repository.requestOrWatchYouTube(item)
+                                            val data = watchRes.getOrNull()
+                                            if (data != null) {
+                                                if (data.allowed) {
+                                                    val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
+                                                    onVideoClick?.invoke(targetId)
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        data.message ?: "Request sent to parent!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    openYtPlaylistVideos(plDetail.playlistId, ch.handle)
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                .padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(120.dp)
-                                    .height(70.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(SurfaceLightDark)
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                AsyncImage(
-                                    model = item.thumbnailUrl,
-                                    contentDescription = item.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
+                                Box(
                                     modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .size(26.dp)
+                                        .width(120.dp)
+                                        .height(70.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(SurfaceLightDark)
+                                ) {
+                                    AsyncImage(
+                                        model = item.thumbnailUrl,
+                                        contentDescription = item.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.Center)
+                                            .size(26.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    val badgeText = when {
+                                        item.isCurated -> "Curated"
+                                        item.approvalStatus == "APPROVED" || item.inHistory || isTrusted -> "✓ Auto-Approved"
+                                        item.approvalStatus == "PENDING" -> "Pending Parent"
+                                        item.approvalStatus == "REJECTED" -> "Declined"
+                                        else -> "Watch / Request"
+                                    }
+                                    val badgeColor = when {
+                                        badgeText == "Curated" || badgeText == "✓ Auto-Approved" -> GreenSuccess
+                                        badgeText == "Pending Parent" -> YellowWarning
+                                        else -> CyanAccent
+                                    }
+                                    Text(
+                                        text = badgeText,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = badgeColor
+                                    )
+                                }
+                            }
+                        }
+                    } else if (activeYtChannelTab == 1) {
+                        if (chPlaylists.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No playlists found for this channel.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                val badgeText = when {
-                                    item.isCurated -> "Curated"
-                                    item.approvalStatus == "APPROVED" || item.inHistory || isTrusted -> "✓ Auto-Approved"
-                                    item.approvalStatus == "PENDING" -> "Pending Parent"
-                                    item.approvalStatus == "REJECTED" -> "Declined"
-                                    else -> "Watch / Request"
+                        } else {
+                            items(chPlaylists, key = { "ch_pl_${it.playlistId}" }) { pl ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(SurfaceDark)
+                                        .clickable { openYtPlaylistVideos(pl.playlistId, ch.handle) }
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(120.dp)
+                                            .height(70.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(SurfaceLightDark)
+                                    ) {
+                                        AsyncImage(
+                                            model = pl.thumbnailUrl,
+                                            contentDescription = pl.title,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(4.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color.Black.copy(alpha = 0.75f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "${pl.videoCount} videos",
+                                                fontSize = 10.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = pl.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Open Playlist",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent
+                                        )
+                                    }
                                 }
-                                val badgeColor = when {
-                                    badgeText == "Curated" || badgeText == "✓ Auto-Approved" -> GreenSuccess
-                                    badgeText == "Pending Parent" -> YellowWarning
-                                    else -> CyanAccent
+                            }
+                        }
+                    } else {
+                        items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(SurfaceDark)
+                                    .clickable {
+                                        scope.launch {
+                                            val watchRes = repository.requestOrWatchYouTube(item)
+                                            val data = watchRes.getOrNull()
+                                            if (data != null) {
+                                                if (data.allowed) {
+                                                    val targetId = item.curatedVideoId ?: "yt:${item.youtubeVideoId}"
+                                                    onVideoClick?.invoke(targetId)
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        data.message ?: "Request sent to parent!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    openYtChannelVideos(ch.handle)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(120.dp)
+                                        .height(70.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(SurfaceLightDark)
+                                ) {
+                                    AsyncImage(
+                                        model = item.thumbnailUrl,
+                                        contentDescription = item.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.Center)
+                                            .size(26.dp)
+                                    )
                                 }
-                                Text(
-                                    text = badgeText,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = badgeColor
-                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    val badgeText = when {
+                                        item.isCurated -> "Curated"
+                                        item.approvalStatus == "APPROVED" || item.inHistory || isTrusted -> "✓ Auto-Approved"
+                                        item.approvalStatus == "PENDING" -> "Pending Parent"
+                                        item.approvalStatus == "REJECTED" -> "Declined"
+                                        else -> "Watch / Request"
+                                    }
+                                    val badgeColor = when {
+                                        badgeText == "Curated" || badgeText == "✓ Auto-Approved" -> GreenSuccess
+                                        badgeText == "Pending Parent" -> YellowWarning
+                                        else -> CyanAccent
+                                    }
+                                    Text(
+                                        text = badgeText,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = badgeColor
+                                    )
+                                }
                             }
                         }
                     }
