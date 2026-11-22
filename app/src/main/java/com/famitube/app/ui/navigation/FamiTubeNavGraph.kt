@@ -56,14 +56,8 @@ fun FamiTubeNavGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Show bottom bar only on primary top-level tabs
-    val showBottomBar = currentRoute in listOf(
-        Screen.Home.route,
-        Screen.Channels.route,
-        Screen.Playlists.route,
-        Screen.Favorites.route,
-        Screen.Profile.route
-    )
+    // Keep bottom bar always visible at all times (except login screen)
+    val showBottomBar = currentRoute != null && currentRoute != Screen.Login.route
 
     var unlockedBanner by remember { mutableStateOf<Achievement?>(null) }
     var unreadNotifications by remember { mutableStateOf(0) }
