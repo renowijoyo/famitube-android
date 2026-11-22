@@ -62,7 +62,7 @@ fun FamiTubeNavGraph(
         Screen.Channels.route,
         Screen.Playlists.route,
         Screen.Favorites.route,
-        Screen.Achievements.route
+        Screen.Profile.route
     )
 
     var unlockedBanner by remember { mutableStateOf<Achievement?>(null) }

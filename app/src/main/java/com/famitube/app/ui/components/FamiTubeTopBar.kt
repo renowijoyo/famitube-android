@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Public
@@ -109,14 +108,6 @@ fun FamiTubeTopBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-            }
-
-            IconButton(onClick = onProfileClick) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "My Profile",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
             }
         }
     )
