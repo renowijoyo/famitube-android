@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -549,36 +548,8 @@ fun SearchScreen(
                     }
                 }
                 query.isBlank() -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        if (subscribedYtChannels.isNotEmpty()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "My Subscribed YouTube Channels (@)",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = YellowWarning
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(subscribedYtChannels, key = { "sub_${it.handle}" }) { ch ->
-                                        AssistChip(
-                                            onClick = { openYtChannelVideos(ch.handle) },
-                                            label = {
-                                                Text(
-                                                    text = if (ch.trustLevel == "TRUSTED") "${ch.handle} ✓" else ch.handle,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        EmptySearchState(
-                            title = "Search for Videos & @Channels",
-                            subtitle = "Type a topic or @channel above to find curated safe videos, YouTube channels, and videos."
-                        )
-                    }
+                    // Initial page is clear before search. Nothing before search.
+                    Box(modifier = Modifier.fillMaxSize())
                 }
                 else -> {
                     val visibleCurated = curatedResults.take(curatedVisibleCount)
@@ -898,29 +869,6 @@ private fun SearchSectionHeader(
                 color = TextSecondary
             )
         }
-    }
-}
-
-@Composable
-private fun EmptySearchState(title: String, subtitle: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
