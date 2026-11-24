@@ -16,12 +16,13 @@ data class HomeUiState(
     val categories: List<Category> = emptyList(),
     val selectedCategory: String? = null,
     val videos: List<Video> = emptyList(),
+    val allVideos: List<Video> = emptyList(),
     val remainingMinutes: Int = 45,
     val errorMessage: String? = null
 )
 
 class HomeViewModel(
-    private val repository: FamiTubeRepository
+    val repository: FamiTubeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -48,11 +49,14 @@ class HomeViewModel(
             val categoriesResult = repository.getCategories()
             val categories = categoriesResult.getOrDefault(emptyList())
                 .filter { it.name != "All Videos" }
+            val allVideosResult = repository.getVideos(ageRating = repository.getPreferences().selectedAgeFilter)
+            val allVideos = allVideosResult.getOrDefault(emptyList()).sortedByDescending { it.createdAt }
 
-            if (categoriesResult.isSuccess || categories.isNotEmpty()) {
+            if (categoriesResult.isSuccess || categories.isNotEmpty() || allVideos.isNotEmpty()) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     categories = categories,
+                    allVideos = allVideos,
                     remainingMinutes = remaining,
                     errorMessage = null
                 )
@@ -60,12 +64,17 @@ class HomeViewModel(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     categories = emptyList(),
+                    allVideos = emptyList(),
                     remainingMinutes = remaining,
                     errorMessage = categoriesResult.exceptionOrNull()?.localizedMessage
                         ?: "Failed to connect to FamiTube server"
                 )
             }
         }
+    }
+
+    fun awardGameStars(amount: Int, description: String = "Game Reward"): Int {
+        return repository.awardStars(amount, com.famitube.app.data.model.StarSource.ACHIEVEMENT, description)
     }
 
     fun selectCategory(categoryName: String) {
