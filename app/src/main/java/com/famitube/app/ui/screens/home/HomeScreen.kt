@@ -11,12 +11,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -177,52 +173,13 @@ fun HomeScreen(
                         }
                     }
 
-                    // 2. Quick Intentional Destinations
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            QuickDestinationTile(
-                                title = "Channels",
-                                icon = Icons.Default.Tv,
-                                accent = CyanAccent,
-                                onClick = { onNavigateTab(Screen.Channels.route) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            QuickDestinationTile(
-                                title = "Playlists",
-                                icon = Icons.Default.VideoLibrary,
-                                accent = PinkPrimary,
-                                onClick = { onNavigateTab(Screen.Playlists.route) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            QuickDestinationTile(
-                                title = "Favorites",
-                                icon = Icons.Default.Favorite,
-                                accent = MintSuccess,
-                                onClick = { onNavigateTab(Screen.Favorites.route) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            QuickDestinationTile(
-                                title = "Badges",
-                                icon = Icons.Default.EmojiEvents,
-                                accent = YellowWarning,
-                                onClick = onNavigateToBadges,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    // 3. Deliberate Topic Picker
+                    // 2. Deliberate Topic Picker
                     if (state.categories.isNotEmpty()) {
                         item {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 6.dp),
+                                    .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -330,47 +287,6 @@ fun HomeScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun QuickDestinationTile(
-    title: String,
-    icon: ImageVector,
-    accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(accent.copy(alpha = 0.16f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = accent,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1
-        )
     }
 }
 
