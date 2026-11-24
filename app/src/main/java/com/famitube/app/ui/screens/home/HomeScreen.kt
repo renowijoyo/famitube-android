@@ -43,7 +43,6 @@ fun HomeScreen(
     onSearchClick: () -> Unit,
     onNavigateToBadges: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToBrowser: () -> Unit = {},
     unreadNotifications: Int = 0,
     onNavigateToNotifications: () -> Unit = {},
     onNavigateTab: (String) -> Unit = {},
@@ -67,8 +66,6 @@ fun HomeScreen(
                 onProfileClick = onNavigateToProfile,
                 onSearchClick = onSearchClick,
                 showSearchButton = !isSimpleMode,
-                onBrowserClick = {},
-                showBrowserButton = false,
                 unreadNotifications = unreadNotifications,
                 onNotificationsClick = onNavigateToNotifications,
                 showNotificationsButton = true

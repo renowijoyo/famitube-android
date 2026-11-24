@@ -354,12 +354,6 @@ data class ParentChildDto(
     @SerializedName("parentPin") val parentPin: String = "1234",
     @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
     @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
-    @SerializedName("browserEnabled") val browserEnabled: Boolean = true,
-    @SerializedName("browserAllowlistOnly") val browserAllowlistOnly: Boolean = false,
-    @SerializedName("browserLogHistory") val browserLogHistory: Boolean = true,
-    @SerializedName("browserSearchProvider") val browserSearchProvider: String = "GOOGLE",
-    @SerializedName("allowedDomains") val allowedDomains: List<String> = emptyList(),
-    @SerializedName("blockedDomains") val blockedDomains: List<String> = emptyList(),
     @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
     @SerializedName("createdAt") val createdAt: String = ""
 )
@@ -404,41 +398,6 @@ data class DecideVideoRequestBody(
     @SerializedName("decision") val decision: String
 )
 
-// ==========================================
-// EMBEDDED BROWSER MODELS
-// ==========================================
-
-data class BrowserConfigDto(
-    @SerializedName("browserEnabled") val browserEnabled: Boolean = true,
-    @SerializedName("browserAllowlistOnly") val browserAllowlistOnly: Boolean = false,
-    @SerializedName("browserLogHistory") val browserLogHistory: Boolean = true,
-    @SerializedName("browserSearchProvider") val browserSearchProvider: String = "GOOGLE",
-    @SerializedName("allowedDomains") val allowedDomains: List<String> = emptyList(),
-    @SerializedName("blockedDomains") val blockedDomains: List<String> = emptyList()
-)
-
-data class BrowserHistoryPostEntry(
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("blocked") val blocked: Boolean = false,
-    @SerializedName("visitedAt") val visitedAt: String
-)
-
-data class BrowserHistoryBatchRequest(
-    @SerializedName("entries") val entries: List<BrowserHistoryPostEntry>
-)
-
-data class KidBrowserHistoryItemDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("kidId") val kidId: String = "",
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("blocked") val blocked: Boolean = false,
-    @SerializedName("visitedAt") val visitedAt: String = ""
-)
-
 data class KidYouTubeSearchHistoryItemDto(
     @SerializedName("id") val id: String,
     @SerializedName("kidId") val kidId: String = "",
@@ -457,27 +416,6 @@ data class KidActivityHistoryData(
 
 data class UpdateYouTubeSubscriptionTrustRequest(
     @SerializedName("trustLevel") val trustLevel: String
-)
-
-data class CreateSiteRequestBody(
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String
-)
-
-data class KidSiteRequestDto(
-    @SerializedName("id") val id: String,
-    @SerializedName("kidId") val kidId: String = "",
-    @SerializedName("kidName") val kidName: String? = null,
-    @SerializedName("parentId") val parentId: String = "",
-    @SerializedName("url") val url: String,
-    @SerializedName("domain") val domain: String,
-    @SerializedName("status") val status: String = "PENDING",
-    @SerializedName("createdAt") val createdAt: String = "",
-    @SerializedName("decidedAt") val decidedAt: String? = null
-)
-
-data class DecideSiteRequestBody(
-    @SerializedName("decision") val decision: String
 )
 
 // ==========================================

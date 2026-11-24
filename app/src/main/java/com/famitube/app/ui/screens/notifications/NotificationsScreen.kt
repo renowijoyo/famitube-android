@@ -163,13 +163,10 @@ fun NotificationsScreen(
                             val icon = when (notif.type) {
                                 "VIDEO_REQUEST" -> Icons.Default.VideoLibrary
                                 "VIDEO_DECISION" -> Icons.Default.CheckCircle
-                                "SITE_REQUEST", "SITE_DECISION" -> Icons.Default.Public
-                                "BLOCKED_SITE" -> Icons.Default.Block
                                 else -> Icons.Default.Notifications
                             }
                             val tint = when (notif.type) {
-                                "BLOCKED_SITE" -> MaterialTheme.colorScheme.error
-                                "VIDEO_DECISION", "SITE_DECISION" -> Color(0xFF059669)
+                                "VIDEO_DECISION" -> Color(0xFF059669)
                                 else -> PinkPrimary
                             }
 
