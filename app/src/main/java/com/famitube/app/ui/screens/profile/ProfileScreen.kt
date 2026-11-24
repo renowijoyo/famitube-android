@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -30,12 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.famitube.app.data.model.Video
 import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.components.ParentalGateDialog
+import com.famitube.app.ui.components.VideoCard
 import com.famitube.app.ui.theme.BlueSecondary
 import com.famitube.app.ui.theme.PinkLight
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.YellowWarning
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +47,9 @@ fun ProfileScreen(
     repository: FamiTubeRepository,
     onBackClick: () -> Unit,
     onNavigateToAchievements: () -> Unit,
+    onNavigateToFavorites: () -> Unit = {},
     onNavigateToParental: () -> Unit = {},
+    onVideoClick: (String) -> Unit = {},
     onLoggedOut: () -> Unit
 ) {
     val prefs = repository.getPreferences()
@@ -52,6 +58,16 @@ fun ProfileScreen(
     val ageFilter by prefs.ageFilterFlow.collectAsState()
     val starBalance by (repository.getStarPointsManager()?.starBalanceFlow?.collectAsState()
         ?: remember { mutableIntStateOf(0) })
+    val favoriteIds by repository.favoriteIdsFlow.collectAsState()
+    var favoriteVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(favoriteIds) {
+        scope.launch {
+            val res = repository.getFavoriteVideos()
+            favoriteVideos = res.getOrDefault(emptyList())
+        }
+    }
 
     val displayName = prefs.loggedInName.ifBlank { "FamiTube Explorer" }
     val email = prefs.loggedInEmail.ifBlank { "Not signed in" }
@@ -157,7 +173,7 @@ fun ProfileScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -165,17 +181,39 @@ fun ProfileScreen(
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(YellowWarning.copy(alpha = 0.15f))
                                 .clickable(onClick = onNavigateToAchievements)
-                                .padding(12.dp),
+                                .padding(10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 text = "⭐ $starBalance",
-                                fontSize = 18.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFFB45309)
                             )
                             Text(
-                                text = "Stars Earned",
+                                text = "Stars",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(PinkPrimary.copy(alpha = 0.12f))
+                                .clickable(onClick = onNavigateToFavorites)
+                                .padding(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "❤️ ${favoriteIds.size}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = PinkPrimary
+                            )
+                            Text(
+                                text = "Favorites",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -186,12 +224,12 @@ fun ProfileScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(12.dp),
+                                .padding(10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 text = "${remainingMinutes}m",
-                                fontSize = 18.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = if (remainingMinutes < 10) Color(0xFFDC2626) else BlueSecondary
                             )
@@ -200,6 +238,104 @@ fun ProfileScreen(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                    }
+                }
+            }
+
+            // 2. Favorites Section (List of Favorites under Profile)
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "❤️",
+                                fontSize = 18.sp
+                            )
+                            Text(
+                                text = "My Favorites",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "(${favoriteVideos.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PinkPrimary
+                            )
+                        }
+                        if (favoriteVideos.isNotEmpty()) {
+                            TextButton(onClick = onNavigateToFavorites) {
+                                Text(
+                                    text = "See All ›",
+                                    fontWeight = FontWeight.Bold,
+                                    color = PinkPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (favoriteVideos.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No favorite videos yet!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Tap the heart icon when watching any video to save it here.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            favoriteVideos.take(6).forEach { video ->
+                                VideoCard(
+                                    video = video,
+                                    onClick = { onVideoClick(video.id) },
+                                    isFavorite = true
+                                )
+                            }
+
+                            if (favoriteVideos.size > 6) {
+                                OutlinedButton(
+                                    onClick = onNavigateToFavorites,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "View All ${favoriteVideos.size} Favorites ›",
+                                        fontWeight = FontWeight.Bold,
+                                        color = PinkPrimary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -259,6 +395,22 @@ fun ProfileScreen(
             }
 
             // 3. Actions
+            OutlinedButton(
+                onClick = onNavigateToFavorites,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = PinkPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Open Favorites Library (${favoriteVideos.size})", fontWeight = FontWeight.SemiBold)
+            }
+
             OutlinedButton(
                 onClick = onNavigateToAchievements,
                 modifier = Modifier

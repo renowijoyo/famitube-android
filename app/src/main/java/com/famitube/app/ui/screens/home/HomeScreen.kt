@@ -47,6 +47,7 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val starBalance by (viewModel.starBalance?.collectAsState() ?: remember { mutableIntStateOf(0) })
     val ageFilter by viewModel.ageFilterFlow.collectAsState()
+    val favoriteIds by viewModel.favoriteIdsFlow.collectAsState()
     val isSimpleMode = ageFilter == "TODDLER" || ageFilter == "YOUNG_KIDS"
 
     LaunchedEffect(Unit) {
@@ -279,6 +280,7 @@ fun HomeScreen(
                             VideoCard(
                                 video = video,
                                 onClick = { onVideoClick(video.id) },
+                                isFavorite = video.id in favoriteIds,
                                 onChannelClick = onChannelClick,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                             )
@@ -424,6 +426,7 @@ private fun SimpleKidHomeContent(
                     VideoCard(
                         video = video,
                         onClick = { onVideoClick(video.id) },
+                        isFavorite = video.id in favoriteIds,
                         onChannelClick = onChannelClick
                     )
                 }

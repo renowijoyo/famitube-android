@@ -65,6 +65,7 @@ fun PlayerScreen(
     onChannelClick: ((String) -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
+    val favoriteIds by viewModel.favoriteIdsFlow.collectAsState()
     val context = LocalContext.current
     val activity = remember(context) { context.findPlayerActivity() }
     var isFullscreen by remember { mutableStateOf(false) }
@@ -399,6 +400,7 @@ fun PlayerScreen(
                                 VideoCard(
                                     video = related,
                                     onClick = { onRelatedVideoClick(related.id) },
+                                    isFavorite = related.id in favoriteIds,
                                     onChannelClick = onChannelClick,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                                 )

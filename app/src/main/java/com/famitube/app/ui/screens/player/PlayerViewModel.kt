@@ -38,6 +38,7 @@ class PlayerViewModel(
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+    val favoriteIdsFlow: StateFlow<Set<String>> = repository.favoriteIdsFlow
 
     private var timerJob: Job? = null
     private var lastFaceSeenAtMs: Long = System.currentTimeMillis()

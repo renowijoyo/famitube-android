@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
@@ -327,6 +328,8 @@ class FamiTubeRepository(
             Result.failure(e)
         }
     }
+
+    val favoriteIdsFlow: StateFlow<Set<String>> get() = preferences.favoriteIdsFlow
 
     fun isFavorite(videoId: String): Boolean = preferences.isFavorite(videoId)
 

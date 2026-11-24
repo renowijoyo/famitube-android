@@ -29,6 +29,7 @@ class HomeViewModel(
 
     val starBalance: StateFlow<Int>? = repository.getStarPointsManager()?.starBalanceFlow
     val ageFilterFlow: StateFlow<String> = repository.getPreferences().ageFilterFlow
+    val favoriteIdsFlow: StateFlow<Set<String>> = repository.favoriteIdsFlow
 
     init {
         repository.recordDailyVisit()

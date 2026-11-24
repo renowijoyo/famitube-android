@@ -16,6 +16,9 @@ class ParentalPreferences(context: Context) {
     private val _themeModeFlow = MutableStateFlow(prefs.getString(KEY_THEME_MODE, "LIGHT") ?: "LIGHT")
     val themeModeFlow: StateFlow<String> = _themeModeFlow.asStateFlow()
 
+    private val _favoriteIdsFlow = MutableStateFlow(prefs.getStringSet(KEY_FAVORITES, emptySet()) ?: emptySet())
+    val favoriteIdsFlow: StateFlow<Set<String>> = _favoriteIdsFlow.asStateFlow()
+
     companion object {
         private const val KEY_PARENT_PIN = "parent_pin"
         private const val KEY_DAILY_LIMIT_MINS = "daily_limit_mins"
@@ -166,6 +169,7 @@ class ParentalPreferences(context: Context) {
             isNowFav = true
         }
         prefs.edit().putStringSet(KEY_FAVORITES, current).apply()
+        _favoriteIdsFlow.value = current.toSet()
         return isNowFav
     }
 

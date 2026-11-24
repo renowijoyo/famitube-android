@@ -45,6 +45,7 @@ fun ChannelDetailScreen(
     var isSubscribed by remember { mutableStateOf(false) }
     var isSubscribing by remember { mutableStateOf(false) }
     val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
+    val favoriteIds by repository.favoriteIdsFlow.collectAsState()
     val scope = rememberCoroutineScope()
 
     fun loadChannel() {
@@ -287,6 +288,7 @@ fun ChannelDetailScreen(
                             VideoCard(
                                 video = video,
                                 onClick = { onVideoClick(video.id) },
+                                isFavorite = video.id in favoriteIds,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                             )
                         }

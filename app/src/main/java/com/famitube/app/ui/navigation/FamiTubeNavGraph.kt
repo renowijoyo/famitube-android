@@ -210,6 +210,12 @@ fun FamiTubeNavGraph(
                 ProfileScreen(
                     repository = repository,
                     onBackClick = { navController.popBackStack() },
+                    onNavigateToFavorites = {
+                        navController.navigate(Screen.Favorites.route)
+                    },
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.Player.createRoute(videoId))
+                    },
                     onNavigateToAchievements = {
                         navController.navigate(Screen.Achievements.route) {
                             popUpTo(Screen.Home.route) { saveState = true }

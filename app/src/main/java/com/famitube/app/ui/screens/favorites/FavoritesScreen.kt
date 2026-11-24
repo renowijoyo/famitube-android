@@ -30,6 +30,7 @@ fun FavoritesScreen(
     var favoriteVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var historyVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    val favoriteIds by repository.favoriteIdsFlow.collectAsState()
     val scope = rememberCoroutineScope()
 
     fun loadData() {
@@ -136,7 +137,12 @@ fun FavoritesScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(currentList) { video ->
-                                VideoCard(video = video, onClick = { onVideoClick(video.id) }, onChannelClick = onChannelClick)
+                                VideoCard(
+                                    video = video,
+                                    onClick = { onVideoClick(video.id) },
+                                    isFavorite = video.id in favoriteIds,
+                                    onChannelClick = onChannelClick
+                                )
                             }
                         }
                     }

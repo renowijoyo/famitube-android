@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -76,6 +77,7 @@ fun SearchScreen(
     val starPointsManager = repository.getStarPointsManager()
     val starBalance by (starPointsManager?.starBalanceFlow?.collectAsState()
         ?: remember { mutableIntStateOf(0) })
+    val favoriteIds by repository.favoriteIdsFlow.collectAsState()
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -413,6 +415,7 @@ fun SearchScreen(
 
                                 YouTubeSearchResultCard(
                                     item = item,
+                                    isFavorite = (item.youtubeVideoId?.let { "yt:$it" } in favoriteIds || item.id in favoriteIds),
                                     showRequestCost = needsApprovalRequest,
                                     onClick = {
                                         if (needsApprovalRequest) {
@@ -518,6 +521,7 @@ fun SearchScreen(
 
                                 YouTubeSearchResultCard(
                                     item = item,
+                                    isFavorite = (item.youtubeVideoId?.let { "yt:$it" } in favoriteIds || item.id in favoriteIds),
                                     showRequestCost = needsApprovalRequest,
                                     onClick = {
                                         if (needsApprovalRequest) {
@@ -582,7 +586,12 @@ fun SearchScreen(
                             }
                         } else {
                             items(visibleCurated, key = { "curated_${it.id}" }) { video ->
-                                VideoCard(video = video, onClick = { onVideoClick(video.id) }, onChannelClick = onChannelClick)
+                                VideoCard(
+                                    video = video,
+                                    onClick = { onVideoClick(video.id) },
+                                    isFavorite = video.id in favoriteIds,
+                                    onChannelClick = onChannelClick
+                                )
                             }
 
                             if (curatedResults.size > curatedVisibleCount) {
@@ -736,6 +745,7 @@ fun SearchScreen(
 
                                     YouTubeSearchResultCard(
                                         item = item,
+                                        isFavorite = (item.youtubeVideoId?.let { "yt:$it" } in favoriteIds || item.id in favoriteIds),
                                         showRequestCost = needsApprovalRequest,
                                         onClick = {
                                             if (needsApprovalRequest) {
@@ -876,6 +886,7 @@ private fun SearchSectionHeader(
 private fun YouTubeSearchResultCard(
     item: YouTubeSearchResult,
     showRequestCost: Boolean = false,
+    isFavorite: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -908,6 +919,26 @@ private fun YouTubeSearchResultCard(
                     .align(Alignment.Center)
                     .size(28.dp)
             )
+
+            // Favorited Heart Badge on bottom-right of thumbnail
+            if (isFavorite) {
+                Box(
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(PinkPrimary.copy(alpha = 0.92f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Favorited",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
