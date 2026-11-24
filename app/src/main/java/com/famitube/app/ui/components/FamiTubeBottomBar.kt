@@ -34,13 +34,13 @@ fun FamiTubeBottomBar(
             listOf(
                 Triple(Screen.Home.route, "Explore", Icons.Default.Home),
                 Triple(Screen.Channels.route, "Channels", Icons.Default.Tv),
-                Triple(Screen.Playlists.route, "Playlists", Icons.Default.VideoLibrary),
+                Triple(Screen.Library.route, "Library", Icons.Default.VideoLibrary),
                 Triple(Screen.Profile.route, "Profile", Icons.Default.Person)
             )
         }
 
         items.forEach { (route, label, icon) ->
-            val isSelected = currentRoute == route
+            val isSelected = currentRoute == route || (route == Screen.Library.route && currentRoute == "playlists")
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onNavigate(route) },

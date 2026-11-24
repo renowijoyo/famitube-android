@@ -624,49 +624,103 @@ class FamiTubeRepository(
     }
 
     suspend fun getKidPlaylists(): Result<List<KidPlaylist>> {
-        if (!isLoggedIn()) return Result.success(emptyList())
+        val localList = prefs.getKidPlaylists()
+        if (!isLoggedIn()) return Result.success(localList)
         return try {
             val res = api.getKidPlaylists()
             if (res.success && res.data != null) {
+                prefs.saveKidPlaylists(res.data)
                 Result.success(res.data)
             } else {
-                Result.success(emptyList())
+                Result.success(localList)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.success(localList)
         }
     }
 
     suspend fun createKidPlaylist(title: String): Result<KidPlaylist> {
+        val trimmed = title.trim()
+        if (!isLoggedIn()) {
+            val local = prefs.createKidPlaylist(trimmed)
+            achievementManager?.recordPlaylistCreated()
+            return Result.success(local)
+        }
         return try {
-            val res = api.createKidPlaylist(CreateKidPlaylistRequest(title = title.trim()))
+            val res = api.createKidPlaylist(CreateKidPlaylistRequest(title = trimmed))
             if (res.success && res.data != null) {
                 achievementManager?.recordPlaylistCreated()
+                // Update local storage
+                val current = prefs.getKidPlaylists().filter { it.id != res.data.id }.toMutableList()
+                current.add(0, res.data)
+                prefs.saveKidPlaylists(current)
                 Result.success(res.data)
             } else {
-                Result.failure(Exception(res.message ?: "Failed to create playlist"))
+                val local = prefs.createKidPlaylist(trimmed)
+                achievementManager?.recordPlaylistCreated()
+                Result.success(local)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            val local = prefs.createKidPlaylist(trimmed)
+            achievementManager?.recordPlaylistCreated()
+            Result.success(local)
+        }
+    }
+
+    suspend fun addKidPlaylistItem(playlistId: String, item: AddKidPlaylistItemRequest): Result<KidPlaylist> {
+        val localUpdated = prefs.addKidPlaylistItem(playlistId, item)
+        if (!isLoggedIn()) {
+            return if (localUpdated != null) Result.success(localUpdated)
+            else Result.failure(Exception("Playlist not found"))
+        }
+        return try {
+            val res = api.addKidPlaylistItem(playlistId, item)
+            if (res.success && res.data != null) {
+                val current = prefs.getKidPlaylists().map { if (it.id == res.data.id) res.data else it }
+                prefs.saveKidPlaylists(current)
+                Result.success(res.data)
+            } else if (localUpdated != null) {
+                Result.success(localUpdated)
+            } else {
+                Result.failure(Exception(res.message ?: "Failed to add video to playlist"))
+            }
+        } catch (e: Exception) {
+            if (localUpdated != null) Result.success(localUpdated)
+            else Result.failure(e)
         }
     }
 
     suspend fun deleteKidPlaylist(playlistId: String): Result<Boolean> {
+        val localDeleted = prefs.deleteKidPlaylist(playlistId)
+        if (!isLoggedIn()) return Result.success(localDeleted)
         return try {
             val res = api.deleteKidPlaylist(playlistId)
-            if (res.success) Result.success(true) else Result.failure(Exception(res.message ?: "Failed to delete"))
+            if (res.success) Result.success(true) else Result.success(localDeleted)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.success(localDeleted)
         }
     }
 
     suspend fun removeKidPlaylistItem(playlistId: String, itemKey: String): Result<KidPlaylist> {
+        val localUpdated = prefs.removeKidPlaylistItem(playlistId, itemKey)
+        if (!isLoggedIn()) {
+            return if (localUpdated != null) Result.success(localUpdated)
+            else Result.failure(Exception("Playlist not found"))
+        }
         return try {
             val res = api.removeKidPlaylistItem(playlistId, itemKey)
-            if (res.success && res.data != null) Result.success(res.data)
-            else Result.failure(Exception(res.message ?: "Failed to remove item"))
+            if (res.success && res.data != null) {
+                val current = prefs.getKidPlaylists().map { if (it.id == res.data.id) res.data else it }
+                prefs.saveKidPlaylists(current)
+                Result.success(res.data)
+            } else if (localUpdated != null) {
+                Result.success(localUpdated)
+            } else {
+                Result.failure(Exception(res.message ?: "Failed to remove item"))
+            }
         } catch (e: Exception) {
-            Result.failure(e)
+            if (localUpdated != null) Result.success(localUpdated)
+            else Result.failure(e)
         }
     }
 

@@ -37,6 +37,7 @@ import com.famitube.app.ui.screens.channels.ChannelsScreen
 import com.famitube.app.ui.screens.favorites.FavoritesScreen
 import com.famitube.app.ui.screens.home.HomeScreen
 import com.famitube.app.ui.screens.home.HomeViewModel
+import com.famitube.app.ui.screens.library.LibraryScreen
 import com.famitube.app.ui.screens.login.LoginScreen
 import com.famitube.app.ui.screens.parental.ParentDashboardScreen
 import com.famitube.app.ui.screens.parental.ParentalSettingsScreen
@@ -279,14 +280,20 @@ fun FamiTubeNavGraph(
                 )
             }
 
-            // Playlists Tab
-            composable(Screen.Playlists.route) {
-                PlaylistsScreen(
+            // Library Tab
+            composable(Screen.Library.route) {
+                LibraryScreen(
                     repository = repository,
-                    onPlaylistClick = { playlist ->
-                        if (playlist.videoIds.isNotEmpty()) {
-                            navController.navigate(Screen.Player.createRoute(playlist.videoIds.first()))
-                        }
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.Player.createRoute(videoId))
+                    }
+                )
+            }
+            composable("playlists") {
+                LibraryScreen(
+                    repository = repository,
+                    onVideoClick = { videoId ->
+                        navController.navigate(Screen.Player.createRoute(videoId))
                     }
                 )
             }

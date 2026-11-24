@@ -2,6 +2,8 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.famitube.app.data.model.AddKidPlaylistItemRequest
+import com.famitube.app.data.model.KidPlaylist
 import com.famitube.app.data.model.SourceType
 import com.famitube.app.data.model.VideoDetailResponse
 import com.famitube.app.data.repository.FamiTubeRepository
@@ -219,6 +221,55 @@ class PlayerViewModel(
     fun toggleFavorite() {
         val newFav = repository.toggleFavorite(videoId)
         _uiState.value = _uiState.value.copy(isFavorite = newFav)
+    }
+
+    fun getKidPlaylists(onResult: (List<KidPlaylist>) -> Unit) {
+        viewModelScope.launch {
+            val res = repository.getKidPlaylists()
+            onResult(res.getOrDefault(emptyList()))
+        }
+    }
+
+    fun addVideoToPlaylist(playlistId: String, onComplete: (Boolean) -> Unit) {
+        val video = _uiState.value.video ?: return
+        viewModelScope.launch {
+            val req = AddKidPlaylistItemRequest(
+                key = "yt_${video.youtubeVideoId.ifBlank { video.id }}",
+                youtubeVideoId = video.youtubeVideoId.ifBlank { video.id },
+                videoId = video.id,
+                title = video.title,
+                channelTitle = video.channelTitle,
+                thumbnailUrl = video.thumbnailUrl,
+                sourceType = "YOUTUBE",
+                sourceUrl = video.videoUrl
+            )
+            val res = repository.addKidPlaylistItem(playlistId, req)
+            onComplete(res.isSuccess)
+        }
+    }
+
+    fun createPlaylistAndAddVideo(title: String, onComplete: (Boolean) -> Unit) {
+        val video = _uiState.value.video ?: return
+        viewModelScope.launch {
+            val createRes = repository.createKidPlaylist(title)
+            val playlist = createRes.getOrNull()
+            if (playlist != null) {
+                val req = AddKidPlaylistItemRequest(
+                    key = "yt_${video.youtubeVideoId.ifBlank { video.id }}",
+                    youtubeVideoId = video.youtubeVideoId.ifBlank { video.id },
+                    videoId = video.id,
+                    title = video.title,
+                    channelTitle = video.channelTitle,
+                    thumbnailUrl = video.thumbnailUrl,
+                    sourceType = "YOUTUBE",
+                    sourceUrl = video.videoUrl
+                )
+                val addRes = repository.addKidPlaylistItem(playlist.id, req)
+                onComplete(addRes.isSuccess)
+            } else {
+                onComplete(false)
+            }
+        }
     }
 
     override fun onCleared() {

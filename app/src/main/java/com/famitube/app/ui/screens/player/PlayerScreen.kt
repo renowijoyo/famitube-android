@@ -26,11 +26,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +52,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.famitube.app.data.model.KidPlaylist
 import com.famitube.app.data.model.SourceType
 import com.famitube.app.ui.components.VideoCard
 import com.famitube.app.ui.theme.PinkPrimary
@@ -69,6 +73,11 @@ fun PlayerScreen(
     val context = LocalContext.current
     val activity = remember(context) { context.findPlayerActivity() }
     var isFullscreen by remember { mutableStateOf(false) }
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var kidPlaylists by remember { mutableStateOf<List<KidPlaylist>>(emptyList()) }
+    var showCreateInPlayer by remember { mutableStateOf(false) }
+    var newPlaylistTitle by remember { mutableStateOf("") }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -353,6 +362,27 @@ fun PlayerScreen(
                                         }
                                     }
 
+                                    // Save to Library List Button
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.getKidPlaylists { lists ->
+                                                kidPlaylists = lists
+                                                showAddToPlaylistDialog = true
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(SurfaceLightDark)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlaylistAdd,
+                                            contentDescription = "Save to Library List",
+                                            tint = Color.White
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(6.dp))
+
                                     // Favorite Button
                                     IconButton(
                                         onClick = { viewModel.toggleFavorite() },
@@ -410,6 +440,136 @@ fun PlayerScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Add to Custom Library List Dialog
+    if (showAddToPlaylistDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddToPlaylistDialog = false },
+            title = {
+                Text("Save to Library List", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = {
+                            newPlaylistTitle = ""
+                            showCreateInPlayer = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Create New List", fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    if (kidPlaylists.isEmpty()) {
+                        Text(
+                            text = "No custom lists yet. Create your first list above!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Choose a list to add to:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            kidPlaylists.forEach { pl ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            viewModel.addVideoToPlaylist(pl.id) { success ->
+                                                showAddToPlaylistDialog = false
+                                                toastMessage = if (success) "Saved to ${pl.title}!" else "Failed to save"
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(pl.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                                            Text("${pl.items.size} videos", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add", tint = PinkPrimary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddToPlaylistDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    // Create New List from Player Dialog
+    if (showCreateInPlayer) {
+        AlertDialog(
+            onDismissRequest = { showCreateInPlayer = false },
+            title = { Text("New List Name", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = newPlaylistTitle,
+                    onValueChange = { newPlaylistTitle = it },
+                    placeholder = { Text("e.g. Science Fun, Music...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newPlaylistTitle.isNotBlank()) {
+                            val title = newPlaylistTitle.trim()
+                            showCreateInPlayer = false
+                            viewModel.createPlaylistAndAddVideo(title) { success ->
+                                showAddToPlaylistDialog = false
+                                toastMessage = if (success) "Created '$title' and saved video!" else "Failed to create"
+                            }
+                        }
+                    },
+                    enabled = newPlaylistTitle.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                ) {
+                    Text("Create & Save", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateInPlayer = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    LaunchedEffect(toastMessage) {
+        toastMessage?.let { msg ->
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+            toastMessage = null
         }
     }
 }
