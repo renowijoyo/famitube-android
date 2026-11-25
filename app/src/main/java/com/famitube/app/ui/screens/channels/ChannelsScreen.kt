@@ -220,53 +220,37 @@ fun ChannelsScreen(
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(SurfaceDark)
                                 .padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(
-                                    model = ch.avatarUrl,
-                                    contentDescription = ch.handle,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(54.dp)
-                                        .clip(CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = ch.handle,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = CyanAccent
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = if (isTrusted) "✓ Parent-Trusted" else "Supervised",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isTrusted) GreenSuccess else YellowWarning
-                                        )
-                                    }
+                            AsyncImage(
+                                model = ch.avatarUrl,
+                                contentDescription = ch.handle,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "${ch.title} • Latest Uploads (${chVideos.size})",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = ch.handle,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = CyanAccent
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isTrusted) "✓ Parent-Trusted" else "Supervised",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isTrusted) GreenSuccess else YellowWarning
                                     )
                                 }
-                            }
-                            IconButton(
-                                onClick = { openYtChannelVideos(ch.handle) },
-                                enabled = !isLoadingYtChannel
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refresh Latest Videos",
-                                    tint = CyanAccent
+                                Text(
+                                    text = "${ch.title} • ${chVideos.size} videos • ${chPlaylists.size} playlists",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
