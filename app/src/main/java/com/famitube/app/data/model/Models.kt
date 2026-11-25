@@ -51,6 +51,7 @@ data class Category(
     @SerializedName("name") val name: String,
     @SerializedName("icon") val icon: String,
     @SerializedName("color") val color: String,
+    @SerializedName("tags") val tags: List<String> = emptyList(),
     @SerializedName("videoCount") val videoCount: Int = 0
 )
 

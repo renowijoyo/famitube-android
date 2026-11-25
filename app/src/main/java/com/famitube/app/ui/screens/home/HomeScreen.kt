@@ -36,8 +36,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.famitube.app.data.model.AgeRating
 import com.famitube.app.data.model.Category
 import com.famitube.app.data.model.Video
+import com.famitube.app.data.model.matchesCategory
+import com.famitube.app.data.model.resolvedCategories
 import com.famitube.app.ui.components.CategoryChip
 import com.famitube.app.ui.components.FamiTubeTopBar
 import com.famitube.app.ui.components.HomeNavTab
@@ -75,8 +78,11 @@ fun HomeScreen(
         else state.categories
     }
     val visibleAllVideos = remember(state.allVideos, isToddler) {
-        if (isToddler) state.allVideos.filter { isToddlerAppropriateCategory(it.category) }
-        else state.allVideos
+        if (isToddler) state.allVideos.filter { video ->
+            val cats = video.resolvedCategories()
+            cats.any { isToddlerAppropriateCategory(it) } &&
+                (video.ageRating == AgeRating.TODDLER || cats.all { isToddlerAppropriateCategory(it) })
+        } else state.allVideos
     }
 
     LaunchedEffect(isToddler) {
@@ -423,7 +429,7 @@ private fun VideosTabContent(
 ) {
     val filtered = remember(videos, selectedCategory) {
         if (selectedCategory == null) videos
-        else videos.filter { it.category == selectedCategory }
+        else videos.filter { it.matchesCategory(selectedCategory) }
     }
 
     LazyColumn(
