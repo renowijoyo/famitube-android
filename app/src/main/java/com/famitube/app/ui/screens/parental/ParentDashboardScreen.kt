@@ -2,6 +2,7 @@ package com.famitube.app.ui.screens.parental
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,12 +29,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.famitube.app.data.model.GlobalParentalControlsDto
 import com.famitube.app.data.model.KidActivityHistoryData
 import com.famitube.app.data.model.ParentChildDto
 import com.famitube.app.data.model.ParentVideoRequestDto
 import com.famitube.app.data.repository.FamiTubeRepository
+import com.famitube.app.ui.components.YouTubeIFramePlayer
 import com.famitube.app.ui.theme.BlueSecondary
 import com.famitube.app.ui.theme.GreenSuccess
 import com.famitube.app.ui.theme.PinkLight
@@ -68,6 +71,7 @@ fun ParentDashboardScreen(
     var childForActivityHistory by remember { mutableStateOf<ParentChildDto?>(null) }
     var childToDelete by remember { mutableStateOf<ParentChildDto?>(null) }
     var busyRequestId by remember { mutableStateOf<String?>(null) }
+    var videoRequestToPreview by remember { mutableStateOf<ParentVideoRequestDto?>(null) }
 
     fun loadDashboard() {
         scope.launch {
@@ -242,6 +246,7 @@ fun ParentDashboardScreen(
                     0 -> VideoRequestsTab(
                         requests = videoRequests,
                         busyRequestId = busyRequestId,
+                        onPreviewVideo = { videoRequestToPreview = it },
                         onDecide = { requestId, decision ->
                             busyRequestId = requestId
                             scope.launch {
@@ -323,6 +328,7 @@ fun ParentDashboardScreen(
         ChildActivityHistoryDialog(
             child = childForActivityHistory!!,
             repository = repository,
+            onPreviewVideo = { videoRequestToPreview = it },
             onDismiss = { childForActivityHistory = null }
         )
     }
@@ -381,12 +387,47 @@ fun ParentDashboardScreen(
             }
         )
     }
+
+    if (videoRequestToPreview != null) {
+        val req = videoRequestToPreview!!
+        ParentVideoPreviewDialog(
+            request = req,
+            isPending = req.status == "PENDING",
+            isBusy = busyRequestId == req.id,
+            onDismiss = { videoRequestToPreview = null },
+            onDecide = { id, dec ->
+                busyRequestId = id
+                scope.launch {
+                    val res = repository.decideParentVideoRequest(id, dec)
+                    busyRequestId = null
+                    res.onSuccess { updated ->
+                        videoRequests = videoRequests.map {
+                            if (it.id == id) updated else it
+                        }
+                        videoRequestToPreview = null
+                        Toast.makeText(
+                            context,
+                            if (dec == "APPROVED") "Video approved" else "Request declined",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }.onFailure { err ->
+                        Toast.makeText(
+                            context,
+                            err.message ?: "Failed to update request",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun VideoRequestsTab(
     requests: List<ParentVideoRequestDto>,
     busyRequestId: String?,
+    onPreviewVideo: (ParentVideoRequestDto) -> Unit,
     onDecide: (String, String) -> Unit
 ) {
     if (requests.isEmpty()) {
@@ -439,14 +480,32 @@ private fun VideoRequestsTab(
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (req.thumbnailUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = req.thumbnailUrl,
-                                contentDescription = req.title,
-                                contentScale = ContentScale.Crop,
+                            Box(
                                 modifier = Modifier
                                     .size(width = 104.dp, height = 62.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                            )
+                                    .clickable { onPreviewVideo(req) }
+                            ) {
+                                AsyncImage(
+                                    model = req.thumbnailUrl,
+                                    contentDescription = req.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.35f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Preview Video",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.width(12.dp))
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -482,12 +541,20 @@ private fun VideoRequestsTab(
                         }
                     }
 
-                    if (isPending) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { onPreviewVideo(req) },
+                            modifier = if (isPending) Modifier.weight(1f) else Modifier.fillMaxWidth()
                         ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Preview")
+                        }
+                        if (isPending) {
                             OutlinedButton(
                                 onClick = { onDecide(req.id, "REJECTED") },
                                 enabled = busyRequestId != req.id,
@@ -504,6 +571,143 @@ private fun VideoRequestsTab(
                                 Text("Approve", color = Color.Black, fontWeight = FontWeight.Bold)
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParentVideoPreviewDialog(
+    request: ParentVideoRequestDto,
+    isPending: Boolean,
+    isBusy: Boolean,
+    onDismiss: () -> Unit,
+    onDecide: (String, String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = null,
+                            tint = PinkPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Preview Video Request",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val vidId = request.youtubeVideoId.ifBlank {
+                    val regex = "vi/([^/]+)".toRegex()
+                    regex.find(request.thumbnailUrl)?.groupValues?.getOrNull(1) ?: ""
+                }
+
+                if (vidId.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black)
+                    ) {
+                        YouTubeIFramePlayer(
+                            videoId = vidId,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else if (request.thumbnailUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = request.thumbnailUrl,
+                        contentDescription = request.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = request.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${request.channelTitle} • Requested by ${request.kidName.ifBlank { request.kidEmail }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isPending) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                onDecide(request.id, "REJECTED")
+                                onDismiss()
+                            },
+                            enabled = !isBusy,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Decline")
+                        }
+                        Button(
+                            onClick = {
+                                onDecide(request.id, "APPROVED")
+                                onDismiss()
+                            },
+                            enabled = !isBusy,
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Approve", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Close Preview")
                     }
                 }
             }
@@ -1060,6 +1264,7 @@ private fun ChildOverrideDialog(
 private fun ChildActivityHistoryDialog(
     child: ParentChildDto,
     repository: FamiTubeRepository,
+    onPreviewVideo: (ParentVideoRequestDto) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -1236,15 +1441,31 @@ private fun ChildActivityHistoryDialog(
                                                     maxLines = 2,
                                                     overflow = TextOverflow.Ellipsis
                                                 )
-                                                Text(
-                                                    text = "${req.channelTitle} • Status: ${req.status}",
-                                                    fontSize = 11.sp,
-                                                    color = when (req.status) {
-                                                        "APPROVED" -> GreenSuccess
-                                                        "REJECTED" -> PinkLight
-                                                        else -> YellowWarning
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "${req.channelTitle} • Status: ${req.status}",
+                                                        fontSize = 11.sp,
+                                                        color = when (req.status) {
+                                                            "APPROVED" -> GreenSuccess
+                                                            "REJECTED" -> PinkLight
+                                                            else -> YellowWarning
+                                                        }
+                                                    )
+                                                    OutlinedButton(
+                                                        onClick = { onPreviewVideo(req) },
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                        modifier = Modifier.height(28.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                        Spacer(modifier = Modifier.width(2.dp))
+                                                        Text("Preview", fontSize = 10.sp)
                                                     }
-                                                )
+                                                }
                                                 if (req.createdAt.isNotBlank()) {
                                                     Text(
                                                         text = req.createdAt,
