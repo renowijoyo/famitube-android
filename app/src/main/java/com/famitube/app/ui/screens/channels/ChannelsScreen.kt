@@ -592,16 +592,68 @@ fun ChannelsScreen(
                                 )
                             }
                         }
-                        items(ytSubscribedChannels, key = { "ytsub_${it.handle}" }) { ytCh ->
+                        items(ytSubscribedChannels, key = { "ytsub_${it.handle}" }, span = { GridItemSpan(2) }) { ytCh ->
                             val isTrusted = ytCh.trustLevel == "TRUSTED"
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { openYtChannelVideos(ytCh.handle) },
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = SurfaceDark)
                             ) {
-                                Box(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = ytCh.avatarUrl,
+                                        contentDescription = ytCh.handle,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(CircleShape)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = ytCh.handle,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = CyanAccent,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(
+                                                        if (isTrusted) GreenSuccess.copy(alpha = 0.18f)
+                                                        else YellowWarning.copy(alpha = 0.18f)
+                                                    )
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isTrusted) "✓ TRUSTED" else "SUPERVISED",
+                                                    color = if (isTrusted) GreenSuccess else YellowWarning,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = ytCh.title,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                     IconButton(
                                         onClick = {
                                             scope.launch {
@@ -611,63 +663,13 @@ fun ChannelsScreen(
                                                 }
                                             }
                                         },
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .size(32.dp)
+                                        modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
                                             contentDescription = "Unsubscribe",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(14.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(
-                                                    if (isTrusted) GreenSuccess.copy(alpha = 0.18f)
-                                                    else YellowWarning.copy(alpha = 0.18f)
-                                                )
-                                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                                        ) {
-                                            Text(
-                                                text = if (isTrusted) "✓ TRUSTED" else "SUPERVISED",
-                                                color = if (isTrusted) GreenSuccess else YellowWarning,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        AsyncImage(
-                                            model = ytCh.avatarUrl,
-                                            contentDescription = ytCh.handle,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(CircleShape)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = ytCh.handle,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = CyanAccent,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = ytCh.title,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
@@ -685,25 +687,88 @@ fun ChannelsScreen(
                                 modifier = Modifier.padding(top = if (ytSubscribedChannels.isNotEmpty()) 6.dp else 0.dp)
                             )
                         }
-                        items(savedChannels, key = { it.id }) { channel ->
-                            ChannelGridCard(
-                                channel = channel,
-                                onClick = { onChannelClick(channel) },
-                                onRemove = {
-                                    scope.launch {
-                                        val res = repository.removeKidSavedChannel(channel.id)
-                                        res.onSuccess {
-                                            savedChannels = savedChannels.filterNot { it.id == channel.id }
-                                        }.onFailure { err ->
-                                            Toast.makeText(
-                                                context,
-                                                err.message ?: "Failed to remove channel",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                        items(savedChannels, key = { it.id }, span = { GridItemSpan(2) }) { channel ->
+                            val isLiveTv = channel.channelType == ChannelType.LIVE_TV
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onChannelClick(channel) },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = channel.avatarUrl,
+                                        contentDescription = channel.name,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(CircleShape)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = channel.name,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(if (isLiveTv) PinkPrimary.copy(alpha = 0.2f) else Color(0xFF4CC9F0).copy(alpha = 0.15f))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isLiveTv) "LIVE TV" else "CURATED",
+                                                    color = if (isLiveTv) PinkPrimary else Color(0xFF4CC9F0),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                         }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "${channel.category} • ${channel.videoCount} videos",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                val res = repository.removeKidSavedChannel(channel.id)
+                                                res.onSuccess {
+                                                    savedChannels = savedChannels.filterNot { it.id == channel.id }
+                                                }.onFailure { err ->
+                                                    Toast.makeText(
+                                                        context,
+                                                        err.message ?: "Failed to remove channel",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove channel",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
                                 }
-                            )
+                            }
                         }
                     }
                 }
