@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.famitube.app.R
 import com.famitube.app.data.model.AgeRating
 import com.famitube.app.data.model.Category
 import com.famitube.app.data.model.Video
@@ -287,7 +288,7 @@ private fun PictureTopicHomeContent(
                 ) {
                     pair.forEachIndexed { colIndex, category ->
                         val accent = tileColors[(rowIndex * 2 + colIndex) % tileColors.size]
-                        val imgUrl = topicImageForCategory(category.name, state.allVideos)
+                        val imgModel = topicImageForCategory(category.name, state.allVideos, isToddler)
                         val topicLabel = displayTopicLabel(category.name, isToddler)
                         Box(
                             modifier = Modifier
@@ -303,7 +304,7 @@ private fun PictureTopicHomeContent(
                                 .clickable { onSelectCategory(category.name) }
                         ) {
                             AsyncImage(
-                                model = imgUrl,
+                                model = imgModel,
                                 contentDescription = topicLabel,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -313,11 +314,19 @@ private fun PictureTopicHomeContent(
                                     .fillMaxSize()
                                     .background(
                                         Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Black.copy(alpha = 0.08f),
-                                                Color.Black.copy(alpha = 0.35f),
-                                                Color.Black.copy(alpha = 0.85f)
-                                            )
+                                            colors = if (isToddler) {
+                                                listOf(
+                                                    Color.Black.copy(alpha = 0.0f),
+                                                    Color.Black.copy(alpha = 0.14f),
+                                                    Color.Black.copy(alpha = 0.78f)
+                                                )
+                                            } else {
+                                                listOf(
+                                                    Color.Black.copy(alpha = 0.08f),
+                                                    Color.Black.copy(alpha = 0.35f),
+                                                    Color.Black.copy(alpha = 0.85f)
+                                                )
+                                            }
                                         )
                                     )
                             )
@@ -507,8 +516,23 @@ private fun VideosTabContent(
     }
 }
 
-private fun topicImageForCategory(name: String, allVideos: List<Video>): String {
+private fun topicImageForCategory(
+    name: String,
+    allVideos: List<Video>,
+    isToddler: Boolean = false
+): Any {
     val lower = name.lowercase()
+    if (isToddler) {
+        when {
+            lower.contains("animal") || lower.contains("nature") -> return R.drawable.topic_toddler_animals
+            lower.contains("cartoon") || lower.contains("fun") -> return R.drawable.topic_toddler_cartoons
+            lower.contains("craft") || lower.contains("art") -> return R.drawable.topic_toddler_art
+            lower.contains("yoga") || lower.contains("active") -> return R.drawable.topic_toddler_dance
+            lower.contains("learn") || lower.contains("abc") -> return R.drawable.topic_toddler_abcs
+            lower.contains("music") || lower.contains("rhyme") -> return R.drawable.topic_toddler_music
+            lower.contains("stor") || lower.contains("read") -> return R.drawable.topic_toddler_stories
+        }
+    }
     val preset = when {
         lower.contains("animal") || lower.contains("nature") -> "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&h=400&fit=crop"
         lower.contains("cartoon") || lower.contains("fun") -> "https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=600&h=400&fit=crop"
