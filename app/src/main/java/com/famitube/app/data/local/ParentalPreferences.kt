@@ -83,7 +83,7 @@ class ParentalPreferences(context: Context) {
         }
 
     fun isSimpleKidMode(): Boolean =
-        selectedAgeFilter == "TODDLER" || selectedAgeFilter == "YOUNG_KIDS"
+        selectedAgeFilter == "TODDLER"
 
     var backendUrl: String
         get() = com.famitube.app.data.remote.NetworkModule.DEFAULT_BASE_URL

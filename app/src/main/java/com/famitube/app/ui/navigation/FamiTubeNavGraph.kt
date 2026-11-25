@@ -65,7 +65,7 @@ fun FamiTubeNavGraph(
     val context = LocalContext.current
     val achievementManager = repository.getAchievementManager()
     val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
-    val isSimpleMode = ageFilter == "TODDLER" || ageFilter == "YOUNG_KIDS"
+    val isSimpleMode = ageFilter == "TODDLER"
 
     LaunchedEffect(currentRoute) {
         if (repository.isLoggedIn()) {

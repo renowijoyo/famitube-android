@@ -78,6 +78,8 @@ fun SearchScreen(
     val starBalance by (starPointsManager?.starBalanceFlow?.collectAsState()
         ?: remember { mutableIntStateOf(0) })
     val favoriteIds by repository.favoriteIdsFlow.collectAsState()
+    val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
+    val isToddler = ageFilter == "TODDLER"
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -211,41 +213,48 @@ fun SearchScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    TextField(
-                        value = query,
-                        onValueChange = {
-                            query = it
-                            performSearch(it, immediate = false)
-                        },
-                        placeholder = {
-                            Text("Search curated or YouTube videos...")
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                focusManager.clearFocus()
-                                performSearch(query, immediate = true)
-                            }
-                        ),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    query = ""
-                                    performSearch("", immediate = true)
-                                }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                    if (isToddler) {
+                        Text(
+                            text = "Search Unavailable",
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        TextField(
+                            value = query,
+                            onValueChange = {
+                                query = it
+                                performSearch(it, immediate = false)
+                            },
+                            placeholder = {
+                                Text("Search curated or YouTube videos...")
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    focusManager.clearFocus()
+                                    performSearch(query, immediate = true)
                                 }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            ),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            trailingIcon = {
+                                if (query.isNotEmpty()) {
+                                    IconButton(onClick = {
+                                        query = ""
+                                        performSearch("", immediate = true)
+                                    }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -257,19 +266,21 @@ fun SearchScreen(
                     }
                 },
                 actions = {
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(YellowWarning.copy(alpha = 0.2f))
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Text(
-                            text = "⭐ $starBalance",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB45309)
-                        )
+                    if (!isToddler) {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(YellowWarning.copy(alpha = 0.2f))
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "⭐ $starBalance",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB45309)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -283,6 +294,37 @@ fun SearchScreen(
                 .padding(paddingValues)
         ) {
             when {
+                isToddler -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(text = "🔒", fontSize = 44.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Search is for Young & Older Kids",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Toddlers explore safe videos using picture topics on the Home screen.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Button(
+                            onClick = onBackClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                        ) {
+                            Text("Back to Topics", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
                 isSearching || isLoadingYtChannel -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
@@ -737,7 +779,7 @@ fun SearchScreen(
                                 }
                             } else {
                                 items(visibleYt, key = { "yt_${it.youtubeVideoId}" }) { item ->
-                                    val needsApprovalRequest = ytSettings?.searchRequireApproval == true &&
+                                    val needsApprovalRequest = !isToddler && ytSettings?.searchRequireApproval == true &&
                                         !item.isCurated &&
                                         item.approvalStatus != "APPROVED" &&
                                         !item.inHistory &&

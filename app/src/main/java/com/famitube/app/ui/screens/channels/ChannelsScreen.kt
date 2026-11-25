@@ -69,6 +69,7 @@ fun ChannelsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var showAddChannelDialog by remember { mutableStateOf(false) }
     val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
+    val isToddler = ageFilter == "TODDLER"
     val scope = rememberCoroutineScope()
 
     fun loadChannels() {
@@ -142,14 +143,16 @@ fun ChannelsScreen(
             TopAppBar(
                 title = { Text("My Channels", fontWeight = FontWeight.Bold) },
                 actions = {
-                    TextButton(onClick = { showAddChannelDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Subscribe to a channel",
-                            tint = PinkPrimary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Subscribe", color = PinkPrimary, fontWeight = FontWeight.Bold)
+                    if (!isToddler) {
+                        TextButton(onClick = { showAddChannelDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Subscribe to a channel",
+                                tint = PinkPrimary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Subscribe", color = PinkPrimary, fontWeight = FontWeight.Bold)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
@@ -286,12 +289,21 @@ fun ChannelsScreen(
                             )
                         }
                         items(plDetail.videos, key = { "pl_yt_${it.youtubeVideoId}" }) { item ->
+                            val canPlayDirectly = item.isCurated || item.approvalStatus == "APPROVED" || item.inHistory || isTrusted
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(SurfaceDark)
                                     .clickable {
+                                        if (isToddler && !canPlayDirectly) {
+                                            Toast.makeText(
+                                                context,
+                                                "Only parent-approved videos can play for Toddlers.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            return@clickable
+                                        }
                                         scope.launch {
                                             val watchRes = repository.requestOrWatchYouTube(item)
                                             val data = watchRes.getOrNull()
@@ -348,6 +360,7 @@ fun ChannelsScreen(
                                     val badgeText = when {
                                         item.isCurated -> "Curated"
                                         item.approvalStatus == "APPROVED" || item.inHistory || isTrusted -> "✓ Auto-Approved"
+                                        isToddler -> "Grown-Ups Only"
                                         item.approvalStatus == "PENDING" -> "Pending Parent"
                                         item.approvalStatus == "REJECTED" -> "Declined"
                                         else -> "Watch / Request"
@@ -437,12 +450,21 @@ fun ChannelsScreen(
                         }
                     } else {
                         items(chVideos, key = { "ch_yt_${it.youtubeVideoId}" }) { item ->
+                            val canPlayDirectly = item.isCurated || item.approvalStatus == "APPROVED" || item.inHistory || isTrusted
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(SurfaceDark)
                                     .clickable {
+                                        if (isToddler && !canPlayDirectly) {
+                                            Toast.makeText(
+                                                context,
+                                                "Only parent-approved videos can play for Toddlers.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            return@clickable
+                                        }
                                         scope.launch {
                                             val watchRes = repository.requestOrWatchYouTube(item)
                                             val data = watchRes.getOrNull()
@@ -499,6 +521,7 @@ fun ChannelsScreen(
                                     val badgeText = when {
                                         item.isCurated -> "Curated"
                                         item.approvalStatus == "APPROVED" || item.inHistory || isTrusted -> "✓ Auto-Approved"
+                                        isToddler -> "Grown-Ups Only"
                                         item.approvalStatus == "PENDING" -> "Pending Parent"
                                         item.approvalStatus == "REJECTED" -> "Declined"
                                         else -> "Watch / Request"
@@ -760,7 +783,7 @@ fun ChannelsScreen(
         }
     }
 
-    if (showAddChannelDialog) {
+    if (showAddChannelDialog && !isToddler) {
         AddChannelByTopicDialog(
             topics = topics,
             allChannels = allChannels,
