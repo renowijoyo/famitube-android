@@ -45,17 +45,16 @@ fun EducationalGamesScreen(
     onAwardStars: (Int, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val initialGroup = when (currentAgeFilter.uppercase()) {
+    val activeAgeGroup = when (currentAgeFilter.uppercase()) {
         "TODDLER" -> GameAgeGroup.TODDLER
         "YOUNG_KIDS" -> GameAgeGroup.YOUNG_KIDS
         else -> GameAgeGroup.OLDER_KIDS
     }
 
-    var selectedAgeGroup by remember { mutableStateOf(initialGroup) }
     var selectedGameIndex by remember { mutableIntStateOf(0) }
 
-    // Reset game index when switching age groups
-    LaunchedEffect(selectedAgeGroup) {
+    // Reset game index when parent changes age filter
+    LaunchedEffect(activeAgeGroup) {
         selectedGameIndex = 0
     }
 
@@ -65,7 +64,7 @@ fun EducationalGamesScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Reward & Motivation Hero Banner
+        // 1. Reward & Motivation Hero Banner (locked to child's assigned age tier)
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -82,12 +81,30 @@ fun EducationalGamesScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Learning Games & Quests 🎮",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Learning Quests 🎮",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(PinkPrimary.copy(alpha = 0.15f))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "${activeAgeGroup.label} (${activeAgeGroup.ageRange})",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = PinkPrimary
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = "Play free educational games, solve puzzles & earn ⭐ stars!",
@@ -114,60 +131,9 @@ fun EducationalGamesScreen(
             }
         }
 
-        // 2. Age Group Selector Chips
+        // 2. Games Tabs for Child's Profile Age Group
         item {
-            Column {
-                Text(
-                    text = "Select Age Group:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    GameAgeGroup.values().forEach { group ->
-                        val isSelected = group == selectedAgeGroup
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { selectedAgeGroup = group },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) PinkPrimary else MaterialTheme.colorScheme.surface
-                            ),
-                            border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) else null
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 10.dp, horizontal = 6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = group.label,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = group.ageRange,
-                                    fontSize = 10.sp,
-                                    color = if (isSelected) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Games Tabs for Selected Age Group
-        item {
-            val gamesForGroup = when (selectedAgeGroup) {
+            val gamesForGroup = when (activeAgeGroup) {
                 GameAgeGroup.TODDLER -> listOf("🦁 Animal Sounds", "🎈 Balloon Pop", "🎨 Shape Sorter")
                 GameAgeGroup.YOUNG_KIDS -> listOf("⚡ Math Sprint", "🃏 Memory Match", "🔤 Spelling Quest")
                 GameAgeGroup.OLDER_KIDS -> listOf("🧠 Science Trivia", "🌍 World Explorer", "🌌 Orbit Physics", "💡 Logic Lab")
@@ -194,9 +160,9 @@ fun EducationalGamesScreen(
             }
         }
 
-        // 4. Active Game Area
+        // 3. Active Game Area
         item {
-            when (selectedAgeGroup) {
+            when (activeAgeGroup) {
                 GameAgeGroup.TODDLER -> {
                     when (selectedGameIndex) {
                         0 -> ToddlerAnimalMatchGame(onAwardStars = onAwardStars)
