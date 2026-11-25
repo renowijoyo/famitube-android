@@ -131,21 +131,40 @@ fun EducationalGamesScreen(
             }
         }
 
-        // 2. Games Tabs for Child's Profile Age Group
+        // 2. Games Tabs for Child's Profile Age Group (Native + H5P Interactive)
         item {
             val gamesForGroup = when (activeAgeGroup) {
-                GameAgeGroup.TODDLER -> listOf("🦁 Animal Sounds", "🎈 Balloon Pop", "🎨 Shape Sorter")
-                GameAgeGroup.YOUNG_KIDS -> listOf("⚡ Math Sprint", "🃏 Memory Match", "🔤 Spelling Quest")
-                GameAgeGroup.OLDER_KIDS -> listOf("🧠 Science Trivia", "🌍 World Explorer", "🌌 Orbit Physics", "💡 Logic Lab")
+                GameAgeGroup.TODDLER -> listOf(
+                    "🦁 Animal Sounds", "🎈 Balloon Pop", "🎨 Shape Sorter",
+                    "📦 H5P Farm Match", "📦 H5P Animal Memory"
+                )
+                GameAgeGroup.YOUNG_KIDS -> listOf(
+                    "⚡ Math Sprint", "🃏 Memory Match", "🔤 Spelling Quest",
+                    "📦 H5P Speed Math", "📦 H5P Phonics Cards", "📦 H5P Word Cloze"
+                )
+                GameAgeGroup.OLDER_KIDS -> listOf(
+                    "🧠 Science Trivia", "🌍 World Explorer", "🌌 Orbit Physics", "💡 Logic Lab",
+                    "📦 H5P Space Cloze", "📦 H5P Multiplication", "📦 H5P Cosmic Memory"
+                )
             }
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(gamesForGroup) { index, title ->
                     val isSelected = selectedGameIndex == index
+                    val isH5p = title.startsWith("📦")
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) CyanAccent else MaterialTheme.colorScheme.surfaceVariant)
+                            .background(
+                                if (isSelected) CyanAccent 
+                                else if (isH5p) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            .border(
+                                width = if (isH5p && !isSelected) 1.dp else 0.dp,
+                                color = if (isH5p && !isSelected) CyanAccent.copy(alpha = 0.35f) else Color.Transparent,
+                                shape = RoundedCornerShape(12.dp)
+                            )
                             .clickable { selectedGameIndex = index }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
@@ -167,14 +186,19 @@ fun EducationalGamesScreen(
                     when (selectedGameIndex) {
                         0 -> ToddlerAnimalMatchGame(onAwardStars = onAwardStars)
                         1 -> ToddlerBalloonPopGame(onAwardStars = onAwardStars)
-                        else -> ToddlerShapeSorterGame(onAwardStars = onAwardStars)
+                        2 -> ToddlerShapeSorterGame(onAwardStars = onAwardStars)
+                        3 -> H5PActivityViewer(contentId = "toddler-animals", onAwardStars = onAwardStars)
+                        else -> H5PActivityViewer(contentId = "toddler-memory", onAwardStars = onAwardStars)
                     }
                 }
                 GameAgeGroup.YOUNG_KIDS -> {
                     when (selectedGameIndex) {
                         0 -> YoungKidsMathSprintGame(onAwardStars = onAwardStars)
                         1 -> YoungKidsMemoryMatchGame(onAwardStars = onAwardStars)
-                        else -> YoungKidsSpellingQuestGame(onAwardStars = onAwardStars)
+                        2 -> YoungKidsSpellingQuestGame(onAwardStars = onAwardStars)
+                        3 -> H5PActivityViewer(contentId = "young-speed-math", onAwardStars = onAwardStars)
+                        4 -> H5PActivityViewer(contentId = "young-phonics", onAwardStars = onAwardStars)
+                        else -> H5PActivityViewer(contentId = "young-drag-cloze", onAwardStars = onAwardStars)
                     }
                 }
                 GameAgeGroup.OLDER_KIDS -> {
@@ -182,7 +206,10 @@ fun EducationalGamesScreen(
                         0 -> OlderKidsScienceTriviaGame(onAwardStars = onAwardStars)
                         1 -> OlderKidsWorldExplorerGame(onAwardStars = onAwardStars)
                         2 -> OlderKidsOrbitPhysicsGame(onAwardStars = onAwardStars)
-                        else -> OlderKidsLogicLabGame(onAwardStars = onAwardStars)
+                        3 -> OlderKidsLogicLabGame(onAwardStars = onAwardStars)
+                        4 -> H5PActivityViewer(contentId = "older-universe-cloze", onAwardStars = onAwardStars)
+                        5 -> H5PActivityViewer(contentId = "older-math-mult", onAwardStars = onAwardStars)
+                        else -> H5PActivityViewer(contentId = "older-space-memory", onAwardStars = onAwardStars)
                     }
                 }
             }
