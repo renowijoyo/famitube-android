@@ -106,12 +106,24 @@ fun FamiTubeNavGraph(
         Scaffold(
         bottomBar = {
             if (showBottomBar) {
+                val isParentMode = currentRoute == Screen.ParentDashboard.route ||
+                        currentRoute == Screen.ParentalSettings.route ||
+                        (repository.isParentMode() && currentRoute !in listOf(
+                            Screen.Home.route,
+                            Screen.Channels.route,
+                            Screen.Library.route,
+                            Screen.Favorites.route,
+                            Screen.Player.route,
+                            Screen.ChannelDetail.route
+                        ))
                 FamiTubeBottomBar(
                     currentRoute = currentRoute,
                     isSimpleMode = isSimpleMode,
+                    isParentMode = isParentMode,
                     onNavigate = { route ->
                         navController.navigate(route) {
-                            popUpTo(Screen.Home.route) { saveState = true }
+                            val popDestination = if (isParentMode) Screen.ParentDashboard.route else Screen.Home.route
+                            popUpTo(popDestination) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }

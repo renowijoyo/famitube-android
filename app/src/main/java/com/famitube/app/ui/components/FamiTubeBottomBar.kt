@@ -1,9 +1,12 @@
 ﻿package com.famitube.app.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FamilyRestroom
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
@@ -19,6 +22,7 @@ fun FamiTubeBottomBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
     isSimpleMode: Boolean = false,
+    isParentMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     NavigationBar(
@@ -26,7 +30,13 @@ fun FamiTubeBottomBar(
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        val items = if (isSimpleMode) {
+        val items = if (isParentMode) {
+            listOf(
+                Triple(Screen.ParentDashboard.route, "Dashboard", Icons.Default.FamilyRestroom),
+                Triple(Screen.Notifications.route, "Alerts", Icons.Default.Notifications),
+                Triple(Screen.ParentalSettings.route, "Settings", Icons.Default.Settings)
+            )
+        } else if (isSimpleMode) {
             listOf(
                 Triple(Screen.Home.route, "Topics", Icons.Default.Home),
                 Triple(Screen.Favorites.route, "Favorites", Icons.Default.Favorite),
