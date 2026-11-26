@@ -352,6 +352,100 @@ class FamiTubeRepository(
         preferences.attentionTrackingEnabled = remote.attentionTrackingEnabled
         preferences.attentionPauseSeconds = remote.attentionPauseSeconds.coerceIn(5, 300)
         preferences.attentionMinWatchPercent = remote.attentionMinWatchPercent.coerceIn(10, 100)
+        preferences.contentLanguage = remote.contentLanguage
+        preferences.cultureMode = remote.cultureMode
+        preferences.toddlerLoopMinutes = remote.toddlerLoopMinutes
+        preferences.toddlerCooldownMinutes = remote.toddlerCooldownMinutes
+        preferences.toddlerSubStage = remote.toddlerSubStage
+        if (remote.toddlerEnabledTopics.isNotEmpty()) {
+            preferences.toddlerEnabledTopics = remote.toddlerEnabledTopics
+        }
+        preferences.toddlerHiddenVideoIds = remote.toddlerHiddenVideoIds
+        if (!remote.toddlerCooldownUntil.isNullOrBlank()) {
+            try {
+                val parsed = java.time.Instant.parse(remote.toddlerCooldownUntil).toEpochMilli()
+                if (parsed > System.currentTimeMillis()) {
+                    preferences.toddlerCooldownUntilMs = parsed
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    suspend fun getToddlerTv(childId: String? = null): Result<ToddlerTvDataDto> {
+        return try {
+            val res = api.getToddlerTv(childId)
+            if (res.success && res.data != null) {
+                val s = res.data.settings
+                preferences.contentLanguage = s.contentLanguage
+                preferences.cultureMode = s.cultureMode
+                preferences.toddlerLoopMinutes = s.toddlerLoopMinutes
+                preferences.toddlerCooldownMinutes = s.toddlerCooldownMinutes
+                preferences.toddlerSubStage = s.toddlerSubStage
+                if (s.toddlerEnabledTopics.isNotEmpty()) {
+                    preferences.toddlerEnabledTopics = s.toddlerEnabledTopics
+                }
+                preferences.toddlerHiddenVideoIds = s.toddlerHiddenVideoIds
+                if (!res.data.cooldownUntil.isNullOrBlank()) {
+                    try {
+                        val parsed = java.time.Instant.parse(res.data.cooldownUntil).toEpochMilli()
+                        preferences.toddlerCooldownUntilMs = parsed
+                    } catch (_: Exception) {}
+                }
+                Result.success(res.data)
+            } else {
+                Result.failure(Exception(res.message ?: "Failed to load Toddler TV"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun startRemoteToddlerCooldown(): Result<Boolean> {
+        preferences.startToddlerCooldown()
+        if (!isLoggedIn()) return Result.success(true)
+        return try {
+            val res = api.updateToddlerCooldown(ToddlerCooldownRequest(action = "START"))
+            Result.success(res.isSuccessful)
+        } catch (_: Exception) {
+            Result.success(true)
+        }
+    }
+
+    suspend fun wakeToddlerTvWithPin(pin: String): Result<Boolean> {
+        if (!isLoggedIn()) {
+            return if (preferences.verifyPin(pin)) {
+                preferences.wakeToddlerTv()
+                Result.success(true)
+            } else {
+                Result.failure(Exception("Incorrect Parent PIN"))
+            }
+        }
+        return try {
+            val res = api.updateToddlerCooldown(ToddlerCooldownRequest(action = "WAKE", pin = pin))
+            if (res.isSuccessful) {
+                preferences.wakeToddlerTv()
+                Result.success(true)
+            } else {
+                Result.failure(Exception("Incorrect Parent PIN"))
+            }
+        } catch (e: Exception) {
+            if (preferences.verifyPin(pin)) {
+                preferences.wakeToddlerTv()
+                Result.success(true)
+            } else {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun wakeChildToddlerTv(childId: String): Result<Boolean> {
+        return try {
+            val res = api.wakeChildToddlerTv(childId)
+            if (res.success) Result.success(true)
+            else Result.failure(Exception(res.message ?: "Failed to wake Toddler TV"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun getPreferences(): ParentalPreferences = preferences
@@ -624,12 +718,12 @@ class FamiTubeRepository(
     }
 
     suspend fun getKidPlaylists(): Result<List<KidPlaylist>> {
-        val localList = prefs.getKidPlaylists()
+        val localList = preferences.getKidPlaylists()
         if (!isLoggedIn()) return Result.success(localList)
         return try {
             val res = api.getKidPlaylists()
             if (res.success && res.data != null) {
-                prefs.saveKidPlaylists(res.data)
+                preferences.saveKidPlaylists(res.data)
                 Result.success(res.data)
             } else {
                 Result.success(localList)
@@ -642,7 +736,7 @@ class FamiTubeRepository(
     suspend fun createKidPlaylist(title: String): Result<KidPlaylist> {
         val trimmed = title.trim()
         if (!isLoggedIn()) {
-            val local = prefs.createKidPlaylist(trimmed)
+            val local = preferences.createKidPlaylist(trimmed)
             achievementManager?.recordPlaylistCreated()
             return Result.success(local)
         }
@@ -651,24 +745,24 @@ class FamiTubeRepository(
             if (res.success && res.data != null) {
                 achievementManager?.recordPlaylistCreated()
                 // Update local storage
-                val current = prefs.getKidPlaylists().filter { it.id != res.data.id }.toMutableList()
+                val current = preferences.getKidPlaylists().filter { it.id != res.data.id }.toMutableList()
                 current.add(0, res.data)
-                prefs.saveKidPlaylists(current)
+                preferences.saveKidPlaylists(current)
                 Result.success(res.data)
             } else {
-                val local = prefs.createKidPlaylist(trimmed)
+                val local = preferences.createKidPlaylist(trimmed)
                 achievementManager?.recordPlaylistCreated()
                 Result.success(local)
             }
         } catch (e: Exception) {
-            val local = prefs.createKidPlaylist(trimmed)
+            val local = preferences.createKidPlaylist(trimmed)
             achievementManager?.recordPlaylistCreated()
             Result.success(local)
         }
     }
 
     suspend fun addKidPlaylistItem(playlistId: String, item: AddKidPlaylistItemRequest): Result<KidPlaylist> {
-        val localUpdated = prefs.addKidPlaylistItem(playlistId, item)
+        val localUpdated = preferences.addKidPlaylistItem(playlistId, item)
         if (!isLoggedIn()) {
             return if (localUpdated != null) Result.success(localUpdated)
             else Result.failure(Exception("Playlist not found"))
@@ -676,8 +770,8 @@ class FamiTubeRepository(
         return try {
             val res = api.addKidPlaylistItem(playlistId, item)
             if (res.success && res.data != null) {
-                val current = prefs.getKidPlaylists().map { if (it.id == res.data.id) res.data else it }
-                prefs.saveKidPlaylists(current)
+                val current = preferences.getKidPlaylists().map { if (it.id == res.data.id) res.data else it }
+                preferences.saveKidPlaylists(current)
                 Result.success(res.data)
             } else if (localUpdated != null) {
                 Result.success(localUpdated)
@@ -691,7 +785,7 @@ class FamiTubeRepository(
     }
 
     suspend fun deleteKidPlaylist(playlistId: String): Result<Boolean> {
-        val localDeleted = prefs.deleteKidPlaylist(playlistId)
+        val localDeleted = preferences.deleteKidPlaylist(playlistId)
         if (!isLoggedIn()) return Result.success(localDeleted)
         return try {
             val res = api.deleteKidPlaylist(playlistId)
@@ -702,7 +796,7 @@ class FamiTubeRepository(
     }
 
     suspend fun removeKidPlaylistItem(playlistId: String, itemKey: String): Result<KidPlaylist> {
-        val localUpdated = prefs.removeKidPlaylistItem(playlistId, itemKey)
+        val localUpdated = preferences.removeKidPlaylistItem(playlistId, itemKey)
         if (!isLoggedIn()) {
             return if (localUpdated != null) Result.success(localUpdated)
             else Result.failure(Exception("Playlist not found"))
@@ -710,8 +804,8 @@ class FamiTubeRepository(
         return try {
             val res = api.removeKidPlaylistItem(playlistId, itemKey)
             if (res.success && res.data != null) {
-                val current = prefs.getKidPlaylists().map { if (it.id == res.data.id) res.data else it }
-                prefs.saveKidPlaylists(current)
+                val current = preferences.getKidPlaylists().map { if (it.id == res.data.id) res.data else it }
+                preferences.saveKidPlaylists(current)
                 Result.success(res.data)
             } else if (localUpdated != null) {
                 Result.success(localUpdated)
@@ -846,7 +940,8 @@ class FamiTubeRepository(
         email: String,
         name: String,
         password: String,
-        ageRating: String
+        ageRating: String,
+        birthday: String? = null
     ): Result<ParentChildDto> {
         return try {
             val response = api.registerParentChild(
@@ -854,6 +949,7 @@ class FamiTubeRepository(
                     email = email.trim().lowercase(),
                     name = name.trim(),
                     password = password,
+                    birthday = birthday?.trim()?.takeIf { it.isNotEmpty() },
                     ageRating = ageRating
                 )
             )
@@ -949,6 +1045,223 @@ class FamiTubeRepository(
             else Result.failure(Exception(res.message ?: "Failed to clear notifications"))
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // Storybooks & Read-Along
+    suspend fun getStories(
+        ageRating: String? = null,
+        language: String? = null,
+        includeAllAges: Boolean = false
+    ): Result<List<StoryBookDto>> {
+        return try {
+            val res = api.getStories(
+                ageRating = ageRating,
+                language = language,
+                includeAllAges = if (includeAllAges) true else null
+            )
+            if (res.success && res.data != null) {
+                Result.success(res.data)
+            } else {
+                Result.success(FallbackStoryCatalog.filter(ageRating, language, includeAllAges))
+            }
+        } catch (_: Exception) {
+            Result.success(FallbackStoryCatalog.filter(ageRating, language, includeAllAges))
+        }
+    }
+
+    suspend fun getStoryById(storyId: String): Result<StoryBookDto> {
+        return try {
+            val res = api.getStoryDetail(storyId)
+            if (res.success && res.data != null) {
+                Result.success(res.data)
+            } else {
+                FallbackStoryCatalog.findById(storyId)?.let { Result.success(it) }
+                    ?: Result.failure(Exception("Storybook not found"))
+            }
+        } catch (_: Exception) {
+            FallbackStoryCatalog.findById(storyId)?.let { Result.success(it) }
+                ?: Result.failure(Exception("Storybook not found"))
+        }
+    }
+
+    suspend fun completeStory(
+        storyId: String,
+        mode: String,
+        fallbackReward: Int
+    ): Result<CompleteStoryResponseDto> {
+        return try {
+            if (isLoggedIn()) {
+                val res = api.completeStory(storyId, CompleteStoryRequest(mode))
+                if (res.success && res.data != null) {
+                    res.data.summary?.let { achievementManager?.refreshSummary() }
+                    return Result.success(res.data)
+                }
+            }
+            val localAward = if (mode == "READ_ALONG") fallbackReward else (fallbackReward + 1) / 2
+            awardStars(localAward, com.famitube.app.data.model.StarSource.ACHIEVEMENT, "Storybook Complete")
+            Result.success(CompleteStoryResponseDto(awardedFamibux = localAward, mode = mode))
+        } catch (_: Exception) {
+            val localAward = if (mode == "READ_ALONG") fallbackReward else (fallbackReward + 1) / 2
+            awardStars(localAward, com.famitube.app.data.model.StarSource.ACHIEVEMENT, "Storybook Complete")
+            Result.success(CompleteStoryResponseDto(awardedFamibux = localAward, mode = mode))
+        }
+    }
+}
+
+object FallbackStoryCatalog {
+    val books: List<StoryBookDto> = listOf(
+        StoryBookDto(
+            id = "story-tod-en-1",
+            title = "Little Bear's Sleepy Moon",
+            author = "FamiTube Storybooks",
+            description = "A gentle bedtime flip-book following Little Bear as he says goodnight to the forest.",
+            coverUrl = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&h=400&fit=crop",
+            ageRating = "TODDLER",
+            language = "en",
+            rewardFamibux = 20,
+            pages = listOf(
+                StoryPageDto(1, "Little Bear sees the bright moon.", "https://images.unsplash.com/photo-1532693322450-2cb5c511067d?w=720&h=440&fit=crop", "🐻🌙", "#1E293B"),
+                StoryPageDto(2, "Soft stars twinkle in the sky.", "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=720&h=440&fit=crop", "✨🌟", "#312E81"),
+                StoryPageDto(3, "Owl says hoot hoot goodnight.", "https://images.unsplash.com/photo-1543549790-8b5f4a028cfb?w=720&h=440&fit=crop", "🦉🌲", "#1E3A5F"),
+                StoryPageDto(4, "Little Bear curls up to sleep.", "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=720&h=440&fit=crop", "🐻💤", "#2E1065")
+            )
+        ),
+        StoryBookDto(
+            id = "story-tod-en-2",
+            title = "Splash Goes the Yellow Duck",
+            author = "FamiTube Storybooks",
+            description = "Count and splash along with a happy yellow duck in the sunny pond.",
+            coverUrl = "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=600&h=400&fit=crop",
+            ageRating = "TODDLER",
+            language = "en",
+            rewardFamibux = 20,
+            pages = listOf(
+                StoryPageDto(1, "One yellow duck swims today.", "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=720&h=440&fit=crop", "🦆💧", "#0C4A6E"),
+                StoryPageDto(2, "Two green frogs hop and play.", "https://images.unsplash.com/photo-1579380656108-f98e4df8ea62?w=720&h=440&fit=crop", "🐸🌿", "#064E3B"),
+                StoryPageDto(3, "Splash splash goes the cool water.", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=720&h=440&fit=crop", "💦🌊", "#155E75"),
+                StoryPageDto(4, "Three happy friends wave goodbye.", "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=720&h=440&fit=crop", "🦆🐸👋", "#1E3A8A")
+            )
+        ),
+        StoryBookDto(
+            id = "story-tod-id-1",
+            title = "Kucing Kecil Suka Susu",
+            author = "Cerita FamiTube",
+            description = "Cerita bergambar lembut tentang kucing kecil yang mencari mangkuk susu hangat.",
+            coverUrl = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&h=400&fit=crop",
+            ageRating = "TODDLER",
+            language = "id",
+            rewardFamibux = 20,
+            pages = listOf(
+                StoryPageDto(1, "Ini kucing kecil yang lucu.", "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=720&h=440&fit=crop", "🐱💛", "#4C1D95"),
+                StoryPageDto(2, "Kucing minum susu putih hangat.", "https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=720&h=440&fit=crop", "🥛🐾", "#1E3A8A"),
+                StoryPageDto(3, "Lalu kucing main bola merah.", "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=720&h=440&fit=crop", "🧶🔴", "#831843"),
+                StoryPageDto(4, "Sekarang kucing tidur nyenyak.", "https://images.unsplash.com/photo-1548802673-380ab8ebc7b7?w=720&h=440&fit=crop", "🐱💤", "#312E81")
+            )
+        ),
+        StoryBookDto(
+            id = "story-tod-id-2",
+            title = "Pelangi di Taman Kelinci",
+            author = "Cerita FamiTube",
+            description = "Mengenal warna pelangi bersama kelinci putih di taman bunga.",
+            coverUrl = "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=600&h=400&fit=crop",
+            ageRating = "TODDLER",
+            language = "id",
+            rewardFamibux = 20,
+            pages = listOf(
+                StoryPageDto(1, "Kelinci melompat di taman hijau.", "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=720&h=440&fit=crop", "🐰🌱", "#065F46"),
+                StoryPageDto(2, "Hujan turun pelan lalu berhenti.", "https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=720&h=440&fit=crop", "🌦️💧", "#0E7490"),
+                StoryPageDto(3, "Lihat ada pelangi indah sekali.", "https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?w=720&h=440&fit=crop", "🌈✨", "#4338CA"),
+                StoryPageDto(4, "Kelinci tersenyum senang sekali.", "https://images.unsplash.com/photo-1452857297128-d9c29adba80b?w=720&h=440&fit=crop", "🐰🌸", "#701A75")
+            )
+        ),
+        StoryBookDto(
+            id = "story-yk-en-1",
+            title = "Rocket Pup Visits the Red Planet",
+            author = "FamiTube Storybooks",
+            description = "Read aloud with Astro the puppy as he blasts off to explore Mars!",
+            coverUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&h=400&fit=crop",
+            ageRating = "YOUNG_KIDS",
+            language = "en",
+            rewardFamibux = 30,
+            pages = listOf(
+                StoryPageDto(1, "Astro the puppy put on his shiny silver helmet and climbed into his red rocket.", "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=720&h=440&fit=crop", "🐶🚀", "#1E1B4B"),
+                StoryPageDto(2, "Three, two, one, blast off! The rocket zoomed past fluffy white clouds into space.", "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=720&h=440&fit=crop", "☁️🛸", "#0F172A"),
+                StoryPageDto(3, "Soon Astro landed softly on the dusty red rocks of Mars and wagged his tail.", "https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=720&h=440&fit=crop", "🔴🪐", "#7C2D12"),
+                StoryPageDto(4, "He found a friendly little rover robot taking pictures of bright sparkling stones.", "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=720&h=440&fit=crop", "🤖💎", "#1E3A8A"),
+                StoryPageDto(5, "After sharing a snack, Astro flew home safely to tell his family all about Mars.", "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=720&h=440&fit=crop", "🌍🏡", "#312E81")
+            )
+        ),
+        StoryBookDto(
+            id = "story-yk-en-2",
+            title = "Maya and the Singing Treehouse",
+            author = "FamiTube Storybooks",
+            description = "Maya discovers a magical wooden treehouse where every leaf plays a musical note.",
+            coverUrl = "https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&h=400&fit=crop",
+            ageRating = "YOUNG_KIDS",
+            language = "en",
+            rewardFamibux = 30,
+            pages = listOf(
+                StoryPageDto(1, "Maya climbed the wooden ladder to her cozy treehouse behind the garden.", "https://images.unsplash.com/photo-1448375240586-882707db888b?w=720&h=440&fit=crop", "🌳🪜", "#064E3B"),
+                StoryPageDto(2, "When the warm breeze blew, the golden leaves began to hum a gentle tune.", "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=720&h=440&fit=crop", "🍃🎶", "#14532D"),
+                StoryPageDto(3, "Two bluebirds perched on the window sill and whistled along with the song.", "https://images.unsplash.com/photo-1444464666168-49d633b86797?w=720&h=440&fit=crop", "🐦🎵", "#0C4A6E"),
+                StoryPageDto(4, "Maya tapped a rhythm on her wooden desk and smiled at the forest orchestra.", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=720&h=440&fit=crop", "🥁🌿", "#3F6212"),
+                StoryPageDto(5, "As the sun turned orange, Maya waved to the birds and promised to sing again tomorrow.", "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=720&h=440&fit=crop", "🌅💛", "#7C2D12")
+            )
+        ),
+        StoryBookDto(
+            id = "story-yk-id-1",
+            title = "Petualangan Bima dan Penyu Laut",
+            author = "Cerita FamiTube",
+            description = "Bacakan dengan suara lantang petualangan Bima menolong penyu kecil kembali ke laut biru.",
+            coverUrl = "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=600&h=400&fit=crop",
+            ageRating = "YOUNG_KIDS",
+            language = "id",
+            rewardFamibux = 30,
+            pages = listOf(
+                StoryPageDto(1, "Pagi itu Bima berjalan di pantai pasir putih bersama ayahnya yang ramah.", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=720&h=440&fit=crop", "🏖️👦", "#0E7490"),
+                StoryPageDto(2, "Mereka melihat seekor penyu kecil yang tersangkut di antara ranting kayu.", "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=720&h=440&fit=crop", "🐢🌿", "#115E59"),
+                StoryPageDto(3, "Dengan hati hati Bima mengangkat ranting itu agar penyu bisa bergerak bebas.", "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=720&h=440&fit=crop", "🤲🌊", "#1E40AF"),
+                StoryPageDto(4, "Penyu kecil berenang gembira menuju ombak biru yang jernih dan tenang.", "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=720&h=440&fit=crop", "🐢💙", "#1D4ED8"),
+                StoryPageDto(5, "Bima berjanji selalu menjaga kebersihan pantai demi semua hewan laut.", "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=720&h=440&fit=crop", "🌏✨", "#0F766E")
+            )
+        ),
+        StoryBookDto(
+            id = "story-yk-id-2",
+            title = "Kereta Bintang Malam Hari",
+            author = "Cerita FamiTube",
+            description = "Naiklah ke kereta api bercahaya yang melaju melintasi awan malam penuh bintang.",
+            coverUrl = "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&h=400&fit=crop",
+            ageRating = "YOUNG_KIDS",
+            language = "id",
+            rewardFamibux = 30,
+            pages = listOf(
+                StoryPageDto(1, "Lampu kereta biru menyala terang saat malam tiba di stasiun desa.", "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=720&h=440&fit=crop", "🚂🌙", "#1E293B"),
+                StoryPageDto(2, "Rara duduk di dekat jendela sambil memegang buku gambar kesayangannya.", "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=720&h=440&fit=crop", "👧📖", "#312E81"),
+                StoryPageDto(3, "Kereta melaju melewati bukit hijau dan jembatan panjang di bawah bulan.", "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=720&h=440&fit=crop", "🌉🌕", "#1E1B4B"),
+                StoryPageDto(4, "Kunang kunang menari di luar kaca seperti ribuan bintang kecil.", "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=720&h=440&fit=crop", "✨🪲", "#3B0764"),
+                StoryPageDto(5, "Kereta pun sampai di kota tujuan dengan selamat dan penuh senyuman.", "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=720&h=440&fit=crop", "🏙️😊", "#0F172A")
+            )
+        )
+    )
+
+    fun findById(id: String): StoryBookDto? = books.find { it.id == id }
+
+    fun filter(ageRating: String?, language: String?, includeAllAges: Boolean): List<StoryBookDto> {
+        val age = ageRating?.uppercase() ?: ""
+        if (!includeAllAges && (age == "OLDER_KIDS" || age == "ALL")) return emptyList()
+        return books.filter { b ->
+            val ageOk = includeAllAges || age.isBlank() || when (age) {
+                "TODDLER" -> b.ageRating == "TODDLER"
+                "YOUNG_KIDS" -> b.ageRating == "YOUNG_KIDS" || b.ageRating == "TODDLER"
+                else -> false
+            }
+            val langOk = language.isNullOrBlank() || language == "bilingual" || b.language.equals(language, ignoreCase = true)
+            ageOk && langOk
+        }.let { list ->
+            if (!includeAllAges && age == "YOUNG_KIDS") {
+                list.sortedBy { if (it.ageRating == "YOUNG_KIDS") 0 else 1 }
+            } else list
         }
     }
 }

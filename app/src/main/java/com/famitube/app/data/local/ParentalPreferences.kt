@@ -43,6 +43,126 @@ class ParentalPreferences(context: Context) {
         private const val KEY_ATTENTION_PAUSE_SECONDS = "attention_pause_seconds"
         private const val KEY_ATTENTION_MIN_WATCH_PERCENT = "attention_min_watch_percent"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_CONTENT_LANGUAGE = "content_language"
+        private const val KEY_CULTURE_MODE = "culture_mode"
+        private const val KEY_TODDLER_LOOP_MINS = "toddler_loop_mins"
+        private const val KEY_TODDLER_COOLDOWN_MINS = "toddler_cooldown_mins"
+        private const val KEY_TODDLER_SUB_STAGE = "toddler_sub_stage"
+        private const val KEY_TODDLER_ENABLED_TOPICS = "toddler_enabled_topics_json"
+        private const val KEY_TODDLER_HIDDEN_VIDEOS = "toddler_hidden_videos_json"
+        private const val KEY_TODDLER_COOLDOWN_UNTIL_MS = "toddler_cooldown_until_ms"
+        private const val KEY_TODDLER_SESSION_SECS = "toddler_session_secs"
+        private const val KEY_TODDLER_PLAYHEADS = "toddler_playheads_json"
+
+        val DEFAULT_TODDLER_TOPICS = listOf(
+            "Music & Rhymes",
+            "Animals & Nature",
+            "Learning & ABCs",
+            "Art & Crafts",
+            "Kids Yoga & Active",
+            "Stories & Reading"
+        )
+    }
+
+    data class ToddlerPlayhead(
+        val index: Int = 0,
+        val elapsedSeconds: Int = 0,
+        val lastLeftAtMs: Long = 0L
+    )
+
+    var contentLanguage: String
+        get() = prefs.getString(KEY_CONTENT_LANGUAGE, "en") ?: "en"
+        set(value) = prefs.edit().putString(KEY_CONTENT_LANGUAGE, value.lowercase()).apply()
+
+    var cultureMode: String
+        get() = prefs.getString(KEY_CULTURE_MODE, "GLOBAL") ?: "GLOBAL"
+        set(value) = prefs.edit().putString(KEY_CULTURE_MODE, value.uppercase()).apply()
+
+    var toddlerLoopMinutes: Int
+        get() = prefs.getInt(KEY_TODDLER_LOOP_MINS, 15).coerceIn(5, 60)
+        set(value) = prefs.edit().putInt(KEY_TODDLER_LOOP_MINS, value.coerceIn(5, 60)).apply()
+
+    var toddlerCooldownMinutes: Int
+        get() = prefs.getInt(KEY_TODDLER_COOLDOWN_MINS, 30).coerceIn(5, 240)
+        set(value) = prefs.edit().putInt(KEY_TODDLER_COOLDOWN_MINS, value.coerceIn(5, 240)).apply()
+
+    var toddlerSubStage: String
+        get() = prefs.getString(KEY_TODDLER_SUB_STAGE, "AUTO") ?: "AUTO"
+        set(value) = prefs.edit().putString(KEY_TODDLER_SUB_STAGE, value.uppercase()).apply()
+
+    var toddlerEnabledTopics: List<String>
+        get() {
+            val raw = prefs.getString(KEY_TODDLER_ENABLED_TOPICS, null) ?: return DEFAULT_TODDLER_TOPICS
+            return try {
+                val type = object : TypeToken<List<String>>() {}.type
+                val parsed = gson.fromJson<List<String>>(raw, type)
+                if (parsed.isNullOrEmpty()) DEFAULT_TODDLER_TOPICS else parsed
+            } catch (_: Exception) {
+                DEFAULT_TODDLER_TOPICS
+            }
+        }
+        set(value) {
+            val list = if (value.isEmpty()) DEFAULT_TODDLER_TOPICS else value
+            prefs.edit().putString(KEY_TODDLER_ENABLED_TOPICS, gson.toJson(list)).apply()
+        }
+
+    var toddlerHiddenVideoIds: List<String>
+        get() {
+            val raw = prefs.getString(KEY_TODDLER_HIDDEN_VIDEOS, null) ?: return emptyList()
+            return try {
+                val type = object : TypeToken<List<String>>() {}.type
+                gson.fromJson<List<String>>(raw, type) ?: emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+        set(value) {
+            prefs.edit().putString(KEY_TODDLER_HIDDEN_VIDEOS, gson.toJson(value)).apply()
+        }
+
+    var toddlerCooldownUntilMs: Long
+        get() = prefs.getLong(KEY_TODDLER_COOLDOWN_UNTIL_MS, 0L)
+        set(value) = prefs.edit().putLong(KEY_TODDLER_COOLDOWN_UNTIL_MS, value).apply()
+
+    var toddlerSessionWatchedSeconds: Int
+        get() = prefs.getInt(KEY_TODDLER_SESSION_SECS, 0).coerceAtLeast(0)
+        set(value) = prefs.edit().putInt(KEY_TODDLER_SESSION_SECS, value.coerceAtLeast(0)).apply()
+
+    fun isToddlerCoolingDown(): Boolean = toddlerCooldownUntilMs > System.currentTimeMillis()
+
+    fun getToddlerCooldownRemainingMinutes(): Int {
+        val rem = (toddlerCooldownUntilMs - System.currentTimeMillis()).coerceAtLeast(0L)
+        return if (rem <= 0L) 0 else ((rem + 59_999L) / 60_000L).toInt().coerceAtLeast(1)
+    }
+
+    fun startToddlerCooldown() {
+        toddlerCooldownUntilMs = System.currentTimeMillis() + (toddlerCooldownMinutes * 60_000L)
+        toddlerSessionWatchedSeconds = 0
+    }
+
+    fun wakeToddlerTv() {
+        toddlerCooldownUntilMs = 0L
+        toddlerSessionWatchedSeconds = 0
+    }
+
+    private fun readToddlerPlayheads(): MutableMap<String, ToddlerPlayhead> {
+        val raw = prefs.getString(KEY_TODDLER_PLAYHEADS, null) ?: return mutableMapOf()
+        return try {
+            val type = object : TypeToken<MutableMap<String, ToddlerPlayhead>>() {}.type
+            gson.fromJson<MutableMap<String, ToddlerPlayhead>>(raw, type) ?: mutableMapOf()
+        } catch (_: Exception) {
+            mutableMapOf()
+        }
+    }
+
+    fun getToddlerPlayhead(topic: String): ToddlerPlayhead {
+        return readToddlerPlayheads()[topic] ?: ToddlerPlayhead()
+    }
+
+    fun saveToddlerPlayhead(topic: String, playhead: ToddlerPlayhead) {
+        val map = readToddlerPlayheads()
+        map[topic] = playhead
+        prefs.edit().putString(KEY_TODDLER_PLAYHEADS, gson.toJson(map)).apply()
     }
 
     var themeMode: String

@@ -17,6 +17,7 @@ import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.components.VideoCard
 import com.famitube.app.ui.theme.PinkPrimary
 import com.famitube.app.ui.theme.SurfaceDark
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,13 +32,28 @@ fun FavoritesScreen(
     var historyVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val favoriteIds by repository.favoriteIdsFlow.collectAsState()
-    val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
+    val prefs = remember { repository.getPreferences() }
+    val ageFilter by prefs.ageFilterFlow.collectAsState()
     val isToddler = ageFilter == "TODDLER"
+    var isCoolingDown by remember(isToddler) {
+        mutableStateOf(isToddler && prefs.isToddlerCoolingDown())
+    }
+    var cooldownRemainingMinutes by remember(isToddler) {
+        mutableIntStateOf(if (isToddler) prefs.getToddlerCooldownRemainingMinutes() else 0)
+    }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(isToddler) {
         if (isToddler) {
             selectedTabIndex = 0
+            while (true) {
+                isCoolingDown = prefs.isToddlerCoolingDown()
+                cooldownRemainingMinutes = prefs.getToddlerCooldownRemainingMinutes()
+                delay(1000L)
+            }
+        } else {
+            isCoolingDown = false
+            cooldownRemainingMinutes = 0
         }
     }
 
@@ -93,6 +109,40 @@ fun FavoritesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            if (isToddler && isCoolingDown) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1B4B)),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("🌙", style = MaterialTheme.typography.displayMedium)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Favorites Are Napping Too",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "TV is resting for $cooldownRemainingMinutes more minute${if (cooldownRemainingMinutes == 1) "" else "s"}. Time to play with blocks or read a book!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFFE0E7FF),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            } else {
             if (!isToddler) {
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
@@ -157,6 +207,7 @@ fun FavoritesScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

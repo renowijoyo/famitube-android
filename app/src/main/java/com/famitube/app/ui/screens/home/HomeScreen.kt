@@ -1,5 +1,6 @@
 ﻿package com.famitube.app.ui.screens.home
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,8 +52,21 @@ import com.famitube.app.ui.components.VideoCard
 import com.famitube.app.ui.components.YouTubeStyleTabBar
 import com.famitube.app.ui.screens.channels.ChannelsScreen
 import com.famitube.app.ui.screens.games.EducationalGamesScreen
+import com.famitube.app.ui.screens.stories.StoryLibraryScreen
 import com.famitube.app.ui.navigation.Screen
 import com.famitube.app.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private val TODDLER_CANONICAL_CHANNEL_ORDER = listOf(
+    "Music & Rhymes",
+    "Animals & Nature",
+    "Learning & ABCs",
+    "Art & Crafts",
+    "Kids Yoga & Active",
+    "Stories & Reading",
+    "Cartoons & Fun"
+)
 
 @Composable
 fun HomeScreen(
@@ -63,7 +78,9 @@ fun HomeScreen(
     unreadNotifications: Int = 0,
     onNavigateToNotifications: () -> Unit = {},
     onNavigateTab: (String) -> Unit = {},
-    onChannelClick: (String) -> Unit = {}
+    onChannelClick: (String) -> Unit = {},
+    onToddlerChannelClick: (String) -> Unit = {},
+    onStoryClick: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val starBalance by (viewModel.starBalance?.collectAsState() ?: remember { mutableIntStateOf(0) })
@@ -71,12 +88,36 @@ fun HomeScreen(
     val favoriteIds by viewModel.favoriteIdsFlow.collectAsState()
     val isToddler = ageFilter == "TODDLER"
     val canSearch = !isToddler
+    val prefs = remember { viewModel.repository.getPreferences() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var selectedNavTab by remember { mutableStateOf(HomeNavTab.HOME) }
     var selectedVideosCategory by remember { mutableStateOf<String?>(null) }
+    var isToddlerCoolingDown by remember(isToddler) {
+        mutableStateOf(isToddler && prefs.isToddlerCoolingDown())
+    }
+    var cooldownRemainingMinutes by remember(isToddler) {
+        mutableIntStateOf(if (isToddler) prefs.getToddlerCooldownRemainingMinutes() else 0)
+    }
+    var showWakeGate by remember { mutableStateOf(false) }
 
-    val visibleCategories = remember(state.categories, isToddler) {
-        if (isToddler) state.categories.filter { isToddlerAppropriateCategory(it.name) }
-        else state.categories
+    val enabledToddlerTopics = prefs.toddlerEnabledTopics
+    val visibleCategories = remember(state.categories, isToddler, enabledToddlerTopics) {
+        if (isToddler) {
+            val allowed = if (enabledToddlerTopics.isNotEmpty()) {
+                enabledToddlerTopics.toSet()
+            } else {
+                TODDLER_CANONICAL_CHANNEL_ORDER.toSet()
+            }
+            state.categories
+                .filter { it.name in allowed && isToddlerAppropriateCategory(it.name) }
+                .sortedBy { cat ->
+                    val idx = TODDLER_CANONICAL_CHANNEL_ORDER.indexOf(cat.name)
+                    if (idx >= 0) idx else 999
+                }
+        } else {
+            state.categories
+        }
     }
     val visibleAllVideos = remember(state.allVideos, isToddler) {
         if (isToddler) state.allVideos.filter { video ->
@@ -88,6 +129,9 @@ fun HomeScreen(
 
     LaunchedEffect(isToddler) {
         if (isToddler) {
+            if (selectedNavTab != HomeNavTab.HOME && selectedNavTab != HomeNavTab.STORIES && selectedNavTab != HomeNavTab.GAMES) {
+                selectedNavTab = HomeNavTab.HOME
+            }
             state.selectedCategory?.let { sel ->
                 if (!isToddlerAppropriateCategory(sel)) {
                     viewModel.selectCategory(sel)
@@ -98,6 +142,14 @@ fun HomeScreen(
                     selectedVideosCategory = null
                 }
             }
+            while (true) {
+                isToddlerCoolingDown = prefs.isToddlerCoolingDown()
+                cooldownRemainingMinutes = prefs.getToddlerCooldownRemainingMinutes()
+                delay(1000L)
+            }
+        } else {
+            isToddlerCoolingDown = false
+            cooldownRemainingMinutes = 0
         }
     }
 
@@ -121,7 +173,12 @@ fun HomeScreen(
                 )
                 YouTubeStyleTabBar(
                     selectedTab = selectedNavTab,
-                    onTabSelected = { selectedNavTab = it }
+                    onTabSelected = { selectedNavTab = it },
+                    tabs = if (isToddler) {
+                        listOf(HomeNavTab.HOME, HomeNavTab.STORIES, HomeNavTab.GAMES)
+                    } else {
+                        listOf(HomeNavTab.HOME, HomeNavTab.VIDEOS, HomeNavTab.CHANNELS, HomeNavTab.STORIES, HomeNavTab.GAMES)
+                    }
                 )
             }
         }
@@ -175,6 +232,16 @@ fun HomeScreen(
                             isToddler = isToddler,
                             canSearch = canSearch,
                             favoriteIds = favoriteIds,
+                            isToddlerCoolingDown = isToddlerCoolingDown,
+                            cooldownRemainingMinutes = cooldownRemainingMinutes,
+                            onWakeToddlerTvClick = { showWakeGate = true },
+                            onToddlerChannelClick = { topic ->
+                                if (isToddlerCoolingDown) {
+                                    Toast.makeText(context, "Shhh... TV is napping 🌙", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    onToddlerChannelClick(topic)
+                                }
+                            },
                             onSelectCategory = { viewModel.selectCategory(it) },
                             onSearchClick = onSearchClick,
                             onVideoClick = onVideoClick,
@@ -200,6 +267,13 @@ fun HomeScreen(
                             onVideoClick = onVideoClick
                         )
                     }
+                    HomeNavTab.STORIES -> {
+                        StoryLibraryScreen(
+                            repository = viewModel.repository,
+                            currentAgeFilter = ageFilter,
+                            onStoryClick = onStoryClick
+                        )
+                    }
                     HomeNavTab.GAMES -> {
                         EducationalGamesScreen(
                             currentAgeFilter = ageFilter,
@@ -211,6 +285,21 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showWakeGate) {
+        ParentalGateDialog(
+            onDismiss = { showWakeGate = false },
+            verifyPin = { pin -> pin == prefs.parentPin },
+            onSuccess = {
+                showWakeGate = false
+                prefs.wakeToddlerTv()
+                isToddlerCoolingDown = false
+                cooldownRemainingMinutes = 0
+                scope.launch { viewModel.repository.wakeToddlerTvWithPin(prefs.parentPin) }
+                Toast.makeText(context, "Toddler TV is awake! ☀️", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
 }
 
 @Composable
@@ -220,6 +309,10 @@ private fun PictureTopicHomeContent(
     isToddler: Boolean,
     canSearch: Boolean,
     favoriteIds: Set<String>,
+    isToddlerCoolingDown: Boolean = false,
+    cooldownRemainingMinutes: Int = 0,
+    onWakeToddlerTvClick: () -> Unit = {},
+    onToddlerChannelClick: (String) -> Unit = {},
     onSelectCategory: (String) -> Unit,
     onSearchClick: () -> Unit,
     onVideoClick: (String) -> Unit,
@@ -244,14 +337,14 @@ private fun PictureTopicHomeContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (isToddler) "Pick a Picture!" else "Pick a Topic",
+                            text = if (isToddler) "Toddler TV Channels 📺" else "Pick a Topic",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = if (isToddler) "Tap a picture to watch safe videos." else "Tap a picture topic or search safe videos.",
+                            text = if (isToddler) "Tap a channel to tune in — calm, slow-paced loops." else "Tap a picture topic or search safe videos.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -279,6 +372,40 @@ private fun PictureTopicHomeContent(
                 }
             }
 
+            if (isToddler && isToddlerCoolingDown) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1B4B)),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "🌙 Shhh... TV is Napping",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Back in $cooldownRemainingMinutes minute${if (cooldownRemainingMinutes == 1) "" else "s"}. Time to play with blocks or read a book!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFE0E7FF)
+                            )
+                            OutlinedButton(
+                                onClick = onWakeToddlerTvClick,
+                                shape = RoundedCornerShape(99.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFDE68A))
+                            ) {
+                                Text("🔑 Parent: Wake Up TV", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
             val rows = categories.chunked(2)
             items(rows.size) { rowIndex ->
                 val pair = rows[rowIndex]
@@ -301,7 +428,13 @@ private fun PictureTopicHomeContent(
                                     color = accent.copy(alpha = 0.65f),
                                     shape = RoundedCornerShape(22.dp)
                                 )
-                                .clickable { onSelectCategory(category.name) }
+                                .clickable {
+                                    if (isToddler) {
+                                        onToddlerChannelClick(category.name)
+                                    } else {
+                                        onSelectCategory(category.name)
+                                    }
+                                }
                         ) {
                             AsyncImage(
                                 model = imgModel,

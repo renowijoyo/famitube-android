@@ -36,6 +36,16 @@ interface FamiTubeApiService {
         @Query("ageRating") ageRating: String? = null
     ): ApiResponse<KidsFeedData>
 
+    @GET("kids/toddler-tv")
+    suspend fun getToddlerTv(
+        @Query("childId") childId: String? = null
+    ): ApiResponse<ToddlerTvDataDto>
+
+    @POST("kids/toddler-tv/cooldown")
+    suspend fun updateToddlerCooldown(
+        @Body body: ToddlerCooldownRequest
+    ): Response<ApiResponse<Map<String, String?>>>
+
     @GET("videos")
     suspend fun getVideos(
         @Query("category") category: String? = null,
@@ -200,6 +210,11 @@ interface FamiTubeApiService {
         @Path("childId") childId: String
     ): ApiResponse<Any>
 
+    @POST("parent/children/{childId}/toddler-wake")
+    suspend fun wakeChildToddlerTv(
+        @Path("childId") childId: String
+    ): ApiResponse<Any>
+
     @GET("parent/video-requests")
     suspend fun getParentVideoRequests(): ApiResponse<List<ParentVideoRequestDto>>
 
@@ -267,4 +282,23 @@ interface FamiTubeApiService {
     suspend fun spendKidStars(
         @Body body: StarSpendRequest
     ): ApiResponse<KidAchievementsDto>
+
+    // Storybooks & Read-Along
+    @GET("stories")
+    suspend fun getStories(
+        @Query("ageRating") ageRating: String? = null,
+        @Query("language") language: String? = null,
+        @Query("includeAllAges") includeAllAges: Boolean? = null
+    ): ApiResponse<List<StoryBookDto>>
+
+    @GET("stories/{id}")
+    suspend fun getStoryDetail(
+        @Path("id") id: String
+    ): ApiResponse<StoryBookDto>
+
+    @POST("kids/stories/{id}/complete")
+    suspend fun completeStory(
+        @Path("id") id: String,
+        @Body body: CompleteStoryRequest
+    ): ApiResponse<CompleteStoryResponseDto>
 }

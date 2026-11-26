@@ -38,7 +38,7 @@ fun FamiTubeBottomBar(
             )
         } else if (isSimpleMode) {
             listOf(
-                Triple(Screen.Home.route, "Topics", Icons.Default.Home),
+                Triple(Screen.Home.route, "TV", Icons.Default.Tv),
                 Triple(Screen.Favorites.route, "Favorites", Icons.Default.Favorite),
                 Triple(Screen.Profile.route, "Profile", Icons.Default.Person)
             )

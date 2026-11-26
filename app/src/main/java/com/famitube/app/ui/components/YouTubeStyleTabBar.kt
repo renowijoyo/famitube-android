@@ -25,6 +25,7 @@ enum class HomeNavTab(val title: String) {
     HOME("Home"),
     VIDEOS("Videos"),
     CHANNELS("Channels"),
+    STORIES("Stories"),
     GAMES("Games")
 }
 
@@ -33,7 +34,7 @@ fun YouTubeStyleTabBar(
     selectedTab: HomeNavTab,
     onTabSelected: (HomeNavTab) -> Unit,
     modifier: Modifier = Modifier,
-    tabs: List<HomeNavTab> = listOf(HomeNavTab.HOME, HomeNavTab.VIDEOS, HomeNavTab.CHANNELS, HomeNavTab.GAMES)
+    tabs: List<HomeNavTab> = listOf(HomeNavTab.HOME, HomeNavTab.VIDEOS, HomeNavTab.CHANNELS, HomeNavTab.STORIES, HomeNavTab.GAMES)
 ) {
     val scrollState = rememberScrollState()
 

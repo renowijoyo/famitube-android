@@ -457,7 +457,7 @@ fun SearchScreen(
 
                                 YouTubeSearchResultCard(
                                     item = item,
-                                    isFavorite = (item.youtubeVideoId?.let { "yt:$it" } in favoriteIds || item.id in favoriteIds),
+                                    isFavorite = ("yt:${item.youtubeVideoId}" in favoriteIds || (item.curatedVideoId != null && item.curatedVideoId in favoriteIds)),
                                     showRequestCost = needsApprovalRequest,
                                     onClick = {
                                         if (needsApprovalRequest) {
@@ -563,7 +563,7 @@ fun SearchScreen(
 
                                 YouTubeSearchResultCard(
                                     item = item,
-                                    isFavorite = (item.youtubeVideoId?.let { "yt:$it" } in favoriteIds || item.id in favoriteIds),
+                                    isFavorite = ("yt:${item.youtubeVideoId}" in favoriteIds || (item.curatedVideoId != null && item.curatedVideoId in favoriteIds)),
                                     showRequestCost = needsApprovalRequest,
                                     onClick = {
                                         if (needsApprovalRequest) {
@@ -787,7 +787,7 @@ fun SearchScreen(
 
                                     YouTubeSearchResultCard(
                                         item = item,
-                                        isFavorite = (item.youtubeVideoId?.let { "yt:$it" } in favoriteIds || item.id in favoriteIds),
+                                        isFavorite = ("yt:${item.youtubeVideoId}" in favoriteIds || (item.curatedVideoId != null && item.curatedVideoId in favoriteIds)),
                                         showRequestCost = needsApprovalRequest,
                                         onClick = {
                                             if (needsApprovalRequest) {

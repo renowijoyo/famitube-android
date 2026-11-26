@@ -50,6 +50,11 @@ fun ParentalSettingsScreen(
     var attentionPauseSeconds by remember { mutableIntStateOf(prefs.attentionPauseSeconds) }
     var attentionMinWatchPercent by remember { mutableIntStateOf(prefs.attentionMinWatchPercent) }
     var selectedAge by remember { mutableStateOf(prefs.selectedAgeFilter) }
+    var contentLanguage by remember { mutableStateOf(prefs.contentLanguage) }
+    var cultureMode by remember { mutableStateOf(prefs.cultureMode) }
+    var toddlerLoopMinutes by remember { mutableIntStateOf(prefs.toddlerLoopMinutes) }
+    var toddlerCooldownMinutes by remember { mutableIntStateOf(prefs.toddlerCooldownMinutes) }
+    var toddlerEnabledTopics by remember { mutableStateOf(prefs.toddlerEnabledTopics.toSet()) }
     var newPin by remember { mutableStateOf(prefs.parentPin) }
     var customStarsInput by remember { mutableStateOf("") }
     var isTestingConnection by remember { mutableStateOf(false) }
@@ -58,10 +63,10 @@ fun ParentalSettingsScreen(
         ?: remember { mutableIntStateOf(0) })
 
     val ageOptions = listOf(
-        "ALL" to "Pre-Teens & Up (Ages 12+)",
-        "TODDLER" to "Toddlers (Ages 0-4)",
-        "YOUNG_KIDS" to "Young Kids (Ages 5-7)",
-        "OLDER_KIDS" to "Explorers / Tweens (Ages 8-11)"
+        "TODDLER" to "Tier 1: Toddler TV (Ages 1.5–3)",
+        "YOUNG_KIDS" to "Tier 2: Young Kids (Ages 4–6)",
+        "OLDER_KIDS" to "Tier 3: Older Kids (Ages 7+)",
+        "ALL" to "All Ages / Pre-Teens (12+)"
     )
 
     Scaffold(
@@ -419,6 +424,143 @@ fun ParentalSettingsScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
                         )
+                    }
+                }
+            }
+
+            // 3b. Global Language & Culture
+            SettingsSectionCard(title = "Language & Culture") {
+                Text(
+                    text = "Parent-selected language and cultural mix for curated channels.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("en" to "English", "id" to "Indonesia", "bilingual" to "Bilingual").forEach { (code, label) ->
+                        FilterChip(
+                            selected = contentLanguage == code,
+                            onClick = {
+                                contentLanguage = code
+                                prefs.contentLanguage = code
+                            },
+                            label = { Text(label, fontSize = 12.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("GLOBAL" to "Global Mix", "ID" to "Indonesia-First").forEach { (code, label) ->
+                        FilterChip(
+                            selected = cultureMode == code,
+                            onClick = {
+                                cultureMode = code
+                                prefs.cultureMode = code
+                            },
+                            label = { Text(label, fontSize = 12.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // 3c. Age-Specific Toddler TV Mode Settings
+            if (selectedAge == "TODDLER") {
+                val allTopics = listOf(
+                    "Music & Rhymes",
+                    "Animals & Nature",
+                    "Learning & ABCs",
+                    "Art & Crafts",
+                    "Kids Yoga & Active",
+                    "Stories & Reading",
+                    "Cartoons & Fun"
+                )
+                SettingsSectionCard(title = "Toddler TV Mode Settings") {
+                    Text(
+                        text = "1 loop = 1 calm session, followed by a gentle Nap Cooldown.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Session Loop Length", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(10, 15, 20).forEach { mins ->
+                            FilterChip(
+                                selected = toddlerLoopMinutes == mins,
+                                onClick = {
+                                    toddlerLoopMinutes = mins
+                                    prefs.toddlerLoopMinutes = mins
+                                },
+                                label = { Text("${mins}m") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Nap Cooldown", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(15, 30, 45, 60).forEach { mins ->
+                            FilterChip(
+                                selected = toddlerCooldownMinutes == mins,
+                                onClick = {
+                                    toddlerCooldownMinutes = mins
+                                    prefs.toddlerCooldownMinutes = mins
+                                },
+                                label = { Text("${mins}m") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Enabled TV Channels", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    allTopics.forEach { topic ->
+                        val checked = topic in toddlerEnabledTopics
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val next = if (checked && toddlerEnabledTopics.size > 1) {
+                                        toddlerEnabledTopics - topic
+                                    } else {
+                                        toddlerEnabledTopics + topic
+                                    }
+                                    toddlerEnabledTopics = next
+                                    prefs.toddlerEnabledTopics = allTopics.filter { it in next }
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { isChecked ->
+                                    val next = if (!isChecked && toddlerEnabledTopics.size > 1) {
+                                        toddlerEnabledTopics - topic
+                                    } else if (isChecked) {
+                                        toddlerEnabledTopics + topic
+                                    } else toddlerEnabledTopics
+                                    toddlerEnabledTopics = next
+                                    prefs.toddlerEnabledTopics = allTopics.filter { it in next }
+                                }
+                            )
+                            Text(topic, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            prefs.wakeToddlerTv()
+                            scope.launch { repository.wakeToddlerTvWithPin(prefs.parentPin) }
+                            Toast.makeText(context, "Toddler TV woken up! ☀️", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("☀️ Wake Up TV Now", color = PinkPrimary, fontWeight = FontWeight.Bold)
                     }
                 }
             }

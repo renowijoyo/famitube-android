@@ -225,7 +225,7 @@ class PlayerViewModel(
     }
 
     fun getKidPlaylists(onResult: (List<KidPlaylist>) -> Unit) {
-        if (repository.getPreferences().ageFilter == "TODDLER") {
+        if (repository.getPreferences().selectedAgeFilter == "TODDLER") {
             onResult(emptyList())
             return
         }
@@ -236,21 +236,21 @@ class PlayerViewModel(
     }
 
     fun addVideoToPlaylist(playlistId: String, onComplete: (Boolean) -> Unit) {
-        if (repository.getPreferences().ageFilter == "TODDLER") {
+        if (repository.getPreferences().selectedAgeFilter == "TODDLER") {
             onComplete(false)
             return
         }
         val video = _uiState.value.video ?: return
         viewModelScope.launch {
             val req = AddKidPlaylistItemRequest(
-                key = "yt_${video.youtubeVideoId.ifBlank { video.id }}",
-                youtubeVideoId = video.youtubeVideoId.ifBlank { video.id },
+                key = "yt_${(video.youtubeVideoId ?: "").ifBlank { video.id }}",
+                youtubeVideoId = (video.youtubeVideoId ?: "").ifBlank { video.id },
                 videoId = video.id,
                 title = video.title,
                 channelTitle = video.channelTitle,
                 thumbnailUrl = video.thumbnailUrl,
                 sourceType = "YOUTUBE",
-                sourceUrl = video.videoUrl
+                sourceUrl = video.sourceUrl
             )
             val res = repository.addKidPlaylistItem(playlistId, req)
             onComplete(res.isSuccess)
@@ -258,7 +258,7 @@ class PlayerViewModel(
     }
 
     fun createPlaylistAndAddVideo(title: String, onComplete: (Boolean) -> Unit) {
-        if (repository.getPreferences().ageFilter == "TODDLER") {
+        if (repository.getPreferences().selectedAgeFilter == "TODDLER") {
             onComplete(false)
             return
         }
@@ -268,14 +268,14 @@ class PlayerViewModel(
             val playlist = createRes.getOrNull()
             if (playlist != null) {
                 val req = AddKidPlaylistItemRequest(
-                    key = "yt_${video.youtubeVideoId.ifBlank { video.id }}",
-                    youtubeVideoId = video.youtubeVideoId.ifBlank { video.id },
+                    key = "yt_${(video.youtubeVideoId ?: "").ifBlank { video.id }}",
+                    youtubeVideoId = (video.youtubeVideoId ?: "").ifBlank { video.id },
                     videoId = video.id,
                     title = video.title,
                     channelTitle = video.channelTitle,
                     thumbnailUrl = video.thumbnailUrl,
                     sourceType = "YOUTUBE",
-                    sourceUrl = video.videoUrl
+                    sourceUrl = video.sourceUrl
                 )
                 val addRes = repository.addKidPlaylistItem(playlist.id, req)
                 onComplete(addRes.isSuccess)

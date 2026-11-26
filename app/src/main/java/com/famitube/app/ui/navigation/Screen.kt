@@ -20,6 +20,12 @@ sealed class Screen(val route: String) {
     object LiveTvPlayer : Screen("live_tv/{channelId}") {
         fun createRoute(channelId: String) = "live_tv/$channelId"
     }
+    object ToddlerTvPlayer : Screen("toddler_tv/{topic}") {
+        fun createRoute(topic: String) = "toddler_tv/${android.net.Uri.encode(topic)}"
+    }
+    object StoryReader : Screen("story_reader/{storyId}") {
+        fun createRoute(storyId: String) = "story_reader/$storyId"
+    }
     object ParentalGate : Screen("parental_gate")
     object ParentalSettings : Screen("parental_settings")
     object ParentDashboard : Screen("parent_dashboard")

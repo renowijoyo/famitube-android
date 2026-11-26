@@ -133,7 +133,46 @@ data class ParentalSettingsDto(
     @SerializedName("ageRating") val ageRating: String = "ALL",
     @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
     @SerializedName("attentionPauseSeconds") val attentionPauseSeconds: Int = 30,
-    @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70
+    @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70,
+    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
+    @SerializedName("toddlerLoopMinutes") val toddlerLoopMinutes: Int = 15,
+    @SerializedName("toddlerCooldownMinutes") val toddlerCooldownMinutes: Int = 30,
+    @SerializedName("toddlerSubStage") val toddlerSubStage: String = "AUTO",
+    @SerializedName("toddlerEnabledTopics") val toddlerEnabledTopics: List<String> = emptyList(),
+    @SerializedName("toddlerHiddenVideoIds") val toddlerHiddenVideoIds: List<String> = emptyList(),
+    @SerializedName("toddlerCooldownUntil") val toddlerCooldownUntil: String? = null
+)
+
+data class ToddlerTvChannelLoopDto(
+    @SerializedName("topic") val topic: String,
+    @SerializedName("displayTitle") val displayTitle: String,
+    @SerializedName("emoji") val emoji: String = "📺",
+    @SerializedName("videos") val videos: List<Video> = emptyList(),
+    @SerializedName("weekNumber") val weekNumber: Int = 0
+)
+
+data class ToddlerTvSettingsDto(
+    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
+    @SerializedName("toddlerLoopMinutes") val toddlerLoopMinutes: Int = 15,
+    @SerializedName("toddlerCooldownMinutes") val toddlerCooldownMinutes: Int = 30,
+    @SerializedName("toddlerSubStage") val toddlerSubStage: String = "AUTO",
+    @SerializedName("toddlerEnabledTopics") val toddlerEnabledTopics: List<String> = emptyList(),
+    @SerializedName("toddlerHiddenVideoIds") val toddlerHiddenVideoIds: List<String> = emptyList()
+)
+
+data class ToddlerTvDataDto(
+    @SerializedName("channels") val channels: List<ToddlerTvChannelLoopDto> = emptyList(),
+    @SerializedName("weekNumber") val weekNumber: Int = 0,
+    @SerializedName("serverTime") val serverTime: String = "",
+    @SerializedName("cooldownUntil") val cooldownUntil: String? = null,
+    @SerializedName("settings") val settings: ToddlerTvSettingsDto = ToddlerTvSettingsDto()
+)
+
+data class ToddlerCooldownRequest(
+    @SerializedName("action") val action: String = "START",
+    @SerializedName("pin") val pin: String? = null
 )
 
 data class KidsFeedData(
@@ -347,6 +386,7 @@ data class ParentChildDto(
     @SerializedName("email") val email: String,
     @SerializedName("name") val name: String,
     @SerializedName("role") val role: String = "CHILD",
+    @SerializedName("birthday") val birthday: String? = null,
     @SerializedName("ageRating") val ageRating: String = "ALL",
     @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
@@ -355,6 +395,14 @@ data class ParentChildDto(
     @SerializedName("parentPin") val parentPin: String = "1234",
     @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
     @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
+    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
+    @SerializedName("toddlerLoopMinutes") val toddlerLoopMinutes: Int = 15,
+    @SerializedName("toddlerCooldownMinutes") val toddlerCooldownMinutes: Int = 30,
+    @SerializedName("toddlerSubStage") val toddlerSubStage: String = "AUTO",
+    @SerializedName("toddlerEnabledTopics") val toddlerEnabledTopics: List<String> = emptyList(),
+    @SerializedName("toddlerHiddenVideoIds") val toddlerHiddenVideoIds: List<String> = emptyList(),
+    @SerializedName("toddlerCooldownUntil") val toddlerCooldownUntil: String? = null,
     @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
     @SerializedName("createdAt") val createdAt: String = ""
 )
@@ -368,7 +416,9 @@ data class GlobalParentalControlsDto(
     @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70,
     @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
-    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true
+    @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
+    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("cultureMode") val cultureMode: String = "GLOBAL"
 )
 
 data class UpdateChildControlsRequest(
@@ -379,6 +429,7 @@ data class RegisterChildRequest(
     @SerializedName("email") val email: String,
     @SerializedName("name") val name: String,
     @SerializedName("password") val password: String,
+    @SerializedName("birthday") val birthday: String? = null,
     @SerializedName("ageRating") val ageRating: String = "ALL"
 )
 
@@ -459,4 +510,43 @@ data class StarAwardRequest(
 
 data class StarSpendRequest(
     @SerializedName("cost") val cost: Int
+)
+
+// ==========================================
+// STORYBOOKS & READ-ALONG MODELS
+// ==========================================
+
+data class StoryPageDto(
+    @SerializedName("pageNumber") val pageNumber: Int = 1,
+    @SerializedName("text") val text: String = "",
+    @SerializedName("imageUrl") val imageUrl: String = "",
+    @SerializedName("illustrationEmoji") val illustrationEmoji: String? = null,
+    @SerializedName("bgColor") val bgColor: String? = null
+)
+
+data class StoryBookDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("author") val author: String = "FamiTube Storybooks",
+    @SerializedName("description") val description: String = "",
+    @SerializedName("coverUrl") val coverUrl: String = "",
+    @SerializedName("ageRating") val ageRating: String = "TODDLER",
+    @SerializedName("language") val language: String = "en",
+    @SerializedName("category") val category: String = "Stories & Reading",
+    @SerializedName("pages") val pages: List<StoryPageDto> = emptyList(),
+    @SerializedName("rewardFamibux") val rewardFamibux: Int = 25,
+    @SerializedName("isApproved") val isApproved: Boolean = true,
+    @SerializedName("createdAt") val createdAt: String = ""
+)
+
+data class CompleteStoryRequest(
+    @SerializedName("mode") val mode: String = "READ_ALONG"
+)
+
+data class CompleteStoryResponseDto(
+    @SerializedName("awardedFamibux") val awardedFamibux: Int = 0,
+    @SerializedName("alreadyRewardedToday") val alreadyRewardedToday: Boolean = false,
+    @SerializedName("storiesReadCount") val storiesReadCount: Int = 0,
+    @SerializedName("mode") val mode: String = "READ_ALONG",
+    @SerializedName("summary") val summary: KidAchievementsDto? = null
 )

@@ -43,10 +43,12 @@ import com.famitube.app.ui.screens.parental.ParentDashboardScreen
 import com.famitube.app.ui.screens.parental.ParentalSettingsScreen
 import com.famitube.app.ui.screens.player.LiveTvPlayerScreen
 import com.famitube.app.ui.screens.player.PlayerScreen
+import com.famitube.app.ui.screens.player.ToddlerTvPlayerScreen
 import com.famitube.app.ui.screens.player.PlayerViewModel
 import com.famitube.app.ui.screens.playlists.PlaylistsScreen
 import com.famitube.app.ui.screens.profile.ProfileScreen
 import com.famitube.app.ui.screens.search.SearchScreen
+import com.famitube.app.ui.screens.stories.StoryReaderScreen
 
 @Composable
 fun FamiTubeNavGraph(
@@ -114,7 +116,8 @@ fun FamiTubeNavGraph(
                             Screen.Library.route,
                             Screen.Favorites.route,
                             Screen.Player.route,
-                            Screen.ChannelDetail.route
+                            Screen.ChannelDetail.route,
+                            Screen.StoryReader.route
                         ))
                 FamiTubeBottomBar(
                     currentRoute = currentRoute,
@@ -194,6 +197,12 @@ fun FamiTubeNavGraph(
                     },
                     onChannelClick = { channelId ->
                         navController.navigate(Screen.ChannelDetail.createRoute(channelId))
+                    },
+                    onToddlerChannelClick = { topic ->
+                        navController.navigate(Screen.ToddlerTvPlayer.createRoute(topic))
+                    },
+                    onStoryClick = { storyId ->
+                        navController.navigate(Screen.StoryReader.createRoute(storyId))
                     },
                     onNavigateToBadges = {
                         navController.navigate(Screen.Achievements.route) {
@@ -298,6 +307,31 @@ fun FamiTubeNavGraph(
                 LiveTvPlayerScreen(
                     repository = repository,
                     channelId = channelId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.ToddlerTvPlayer.route,
+                arguments = listOf(navArgument("topic") { type = NavType.StringType })
+            ) { backStack ->
+                val encodedTopic = backStack.arguments?.getString("topic") ?: ""
+                val topic = android.net.Uri.decode(encodedTopic)
+                ToddlerTvPlayerScreen(
+                    repository = repository,
+                    topic = topic,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.StoryReader.route,
+                arguments = listOf(navArgument("storyId") { type = NavType.StringType })
+            ) { backStack ->
+                val storyId = backStack.arguments?.getString("storyId") ?: ""
+                StoryReaderScreen(
+                    repository = repository,
+                    storyId = storyId,
                     onBackClick = { navController.popBackStack() }
                 )
             }
