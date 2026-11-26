@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -97,6 +99,22 @@ fun ParentDashboardScreen(
     }
 
     val pendingCount = videoRequests.count { it.status == "PENDING" }
+
+    if (childForActivityHistory != null) {
+        ChildActivityHistoryView(
+            child = childForActivityHistory!!,
+            repository = repository,
+            onPreviewVideo = { videoRequestToPreview = it },
+            onBack = { childForActivityHistory = null }
+        )
+        if (videoRequestToPreview != null) {
+            ParentVideoPreviewDialog(
+                request = videoRequestToPreview!!,
+                onDismiss = { videoRequestToPreview = null }
+            )
+        }
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -324,14 +342,7 @@ fun ParentDashboardScreen(
         )
     }
 
-    if (childForActivityHistory != null) {
-        ChildActivityHistoryDialog(
-            child = childForActivityHistory!!,
-            repository = repository,
-            onPreviewVideo = { videoRequestToPreview = it },
-            onDismiss = { childForActivityHistory = null }
-        )
-    }
+// Child activity history is displayed as its own page view above
 
     if (childToEdit != null) {
         val target = childToEdit!!
@@ -1260,13 +1271,15 @@ private fun ChildOverrideDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChildActivityHistoryDialog(
+private fun ChildActivityHistoryView(
     child: ParentChildDto,
     repository: FamiTubeRepository,
     onPreviewVideo: (ParentVideoRequestDto) -> Unit = {},
-    onDismiss: () -> Unit
+    onBack: () -> Unit
 ) {
+    BackHandler(enabled = true) { onBack() }
     val scope = rememberCoroutineScope()
     var activeTab by remember { mutableIntStateOf(0) } // 0 = Watch, 1 = Searches, 2 = Requests
     var isLoading by remember { mutableStateOf(true) }
@@ -1286,21 +1299,62 @@ private fun ChildActivityHistoryDialog(
         loadHistory()
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "${child.name} • Activity History",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "${child.name} • Activity History",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "${child.ageRating.replace('_', ' ')} • Activity & Channels",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to Parent Dashboard"
+                        )
+                    }
+                },
+                actions = {
+                    if (activeTab == 0 || activeTab == 1) {
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    if (activeTab == 0) {
+                                        repository.clearChildWatchHistory(child.id)
+                                    } else {
+                                        repository.clearChildSearchHistory(child.id)
+                                    }
+                                    loadHistory()
+                                }
+                            }
+                        ) {
+                            Text("Clear Tab", color = PinkLight, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 440.dp)
-            ) {
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
                 TabRow(selectedTabIndex = activeTab) {
                     Tab(
                         selected = activeTab == 0,
@@ -1573,30 +1627,6 @@ private fun ChildActivityHistoryDialog(
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        },
-        dismissButton = {
-            if (activeTab == 0 || activeTab == 1) {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            if (activeTab == 0) {
-                                repository.clearChildWatchHistory(child.id)
-                            } else {
-                                repository.clearChildSearchHistory(child.id)
-                            }
-                            loadHistory()
-                        }
-                    }
-                ) {
-                    Text("Clear Tab", color = PinkLight)
-                }
-            }
         }
-    )
+    }
 }
