@@ -41,6 +41,7 @@ class PlayerViewModel(
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
     val favoriteIdsFlow: StateFlow<Set<String>> = repository.favoriteIdsFlow
+    val ageFilterFlow: StateFlow<String> = repository.getPreferences().ageFilterFlow
 
     private var timerJob: Job? = null
     private var lastFaceSeenAtMs: Long = System.currentTimeMillis()
@@ -224,6 +225,10 @@ class PlayerViewModel(
     }
 
     fun getKidPlaylists(onResult: (List<KidPlaylist>) -> Unit) {
+        if (repository.getPreferences().ageFilter == "TODDLER") {
+            onResult(emptyList())
+            return
+        }
         viewModelScope.launch {
             val res = repository.getKidPlaylists()
             onResult(res.getOrDefault(emptyList()))
@@ -231,6 +236,10 @@ class PlayerViewModel(
     }
 
     fun addVideoToPlaylist(playlistId: String, onComplete: (Boolean) -> Unit) {
+        if (repository.getPreferences().ageFilter == "TODDLER") {
+            onComplete(false)
+            return
+        }
         val video = _uiState.value.video ?: return
         viewModelScope.launch {
             val req = AddKidPlaylistItemRequest(
@@ -249,6 +258,10 @@ class PlayerViewModel(
     }
 
     fun createPlaylistAndAddVideo(title: String, onComplete: (Boolean) -> Unit) {
+        if (repository.getPreferences().ageFilter == "TODDLER") {
+            onComplete(false)
+            return
+        }
         val video = _uiState.value.video ?: return
         viewModelScope.launch {
             val createRes = repository.createKidPlaylist(title)

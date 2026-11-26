@@ -1,6 +1,7 @@
 ﻿package com.famitube.app.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Tv
@@ -28,6 +29,7 @@ fun FamiTubeBottomBar(
         val items = if (isSimpleMode) {
             listOf(
                 Triple(Screen.Home.route, "Topics", Icons.Default.Home),
+                Triple(Screen.Favorites.route, "Favorites", Icons.Default.Favorite),
                 Triple(Screen.Profile.route, "Profile", Icons.Default.Person)
             )
         } else {

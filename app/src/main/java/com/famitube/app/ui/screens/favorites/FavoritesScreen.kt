@@ -31,7 +31,15 @@ fun FavoritesScreen(
     var historyVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val favoriteIds by repository.favoriteIdsFlow.collectAsState()
+    val ageFilter by repository.getPreferences().ageFilterFlow.collectAsState()
+    val isToddler = ageFilter == "TODDLER"
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(isToddler) {
+        if (isToddler) {
+            selectedTabIndex = 0
+        }
+    }
 
     fun loadData() {
         scope.launch {
@@ -75,7 +83,7 @@ fun FavoritesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Library", fontWeight = FontWeight.Bold) },
+                title = { Text(if (isToddler) "Favorites" else "My Library", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
             )
         }
@@ -85,21 +93,23 @@ fun FavoritesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = SurfaceDark,
-                contentColor = PinkPrimary
-            ) {
-                Tab(
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 },
-                    text = { Text("Favorites (${favoriteVideos.size})", fontWeight = FontWeight.SemiBold) }
-                )
-                Tab(
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 },
-                    text = { Text("Watch History (${historyVideos.size})", fontWeight = FontWeight.SemiBold) }
-                )
+            if (!isToddler) {
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = SurfaceDark,
+                    contentColor = PinkPrimary
+                ) {
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        text = { Text("Favorites (${favoriteVideos.size})", fontWeight = FontWeight.SemiBold) }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = { selectedTabIndex = 1 },
+                        text = { Text("Watch History (${historyVideos.size})", fontWeight = FontWeight.SemiBold) }
+                    )
+                }
             }
 
             Box(modifier = Modifier.fillMaxSize()) {

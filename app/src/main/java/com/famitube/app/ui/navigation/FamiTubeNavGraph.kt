@@ -92,6 +92,16 @@ fun FamiTubeNavGraph(
         }
     }
 
+    LaunchedEffect(isSimpleMode, currentRoute) {
+        if (isSimpleMode && (currentRoute == Screen.Library.route || currentRoute == "playlists")) {
+            navController.navigate(Screen.Favorites.route) {
+                popUpTo(Screen.Home.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
         bottomBar = {
@@ -280,22 +290,46 @@ fun FamiTubeNavGraph(
                 )
             }
 
-            // Library Tab
+            // Library Tab (disabled in Toddler mode -> Favorites)
             composable(Screen.Library.route) {
-                LibraryScreen(
-                    repository = repository,
-                    onVideoClick = { videoId ->
-                        navController.navigate(Screen.Player.createRoute(videoId))
-                    }
-                )
+                if (isSimpleMode) {
+                    FavoritesScreen(
+                        repository = repository,
+                        onVideoClick = { videoId ->
+                            navController.navigate(Screen.Player.createRoute(videoId))
+                        },
+                        onChannelClick = { channelId ->
+                            navController.navigate(Screen.ChannelDetail.createRoute(channelId))
+                        }
+                    )
+                } else {
+                    LibraryScreen(
+                        repository = repository,
+                        onVideoClick = { videoId ->
+                            navController.navigate(Screen.Player.createRoute(videoId))
+                        }
+                    )
+                }
             }
             composable("playlists") {
-                LibraryScreen(
-                    repository = repository,
-                    onVideoClick = { videoId ->
-                        navController.navigate(Screen.Player.createRoute(videoId))
-                    }
-                )
+                if (isSimpleMode) {
+                    FavoritesScreen(
+                        repository = repository,
+                        onVideoClick = { videoId ->
+                            navController.navigate(Screen.Player.createRoute(videoId))
+                        },
+                        onChannelClick = { channelId ->
+                            navController.navigate(Screen.ChannelDetail.createRoute(channelId))
+                        }
+                    )
+                } else {
+                    LibraryScreen(
+                        repository = repository,
+                        onVideoClick = { videoId ->
+                            navController.navigate(Screen.Player.createRoute(videoId))
+                        }
+                    )
+                }
             }
 
             // Favorites Tab

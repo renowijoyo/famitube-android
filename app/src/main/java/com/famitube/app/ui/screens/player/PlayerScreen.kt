@@ -70,6 +70,8 @@ fun PlayerScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val favoriteIds by viewModel.favoriteIdsFlow.collectAsState()
+    val ageFilter by viewModel.ageFilterFlow.collectAsState()
+    val isToddler = ageFilter == "TODDLER"
     val context = LocalContext.current
     val activity = remember(context) { context.findPlayerActivity() }
     var isFullscreen by remember { mutableStateOf(false) }
@@ -78,6 +80,13 @@ fun PlayerScreen(
     var showCreateInPlayer by remember { mutableStateOf(false) }
     var newPlaylistTitle by remember { mutableStateOf("") }
     var toastMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(isToddler) {
+        if (isToddler) {
+            showAddToPlaylistDialog = false
+            showCreateInPlayer = false
+        }
+    }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -362,26 +371,28 @@ fun PlayerScreen(
                                         }
                                     }
 
-                                    // Save to Library List Button
-                                    IconButton(
-                                        onClick = {
-                                            viewModel.getKidPlaylists { lists ->
-                                                kidPlaylists = lists
-                                                showAddToPlaylistDialog = true
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .clip(CircleShape)
-                                            .background(SurfaceLightDark)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.PlaylistAdd,
-                                            contentDescription = "Save to Library List",
-                                            tint = Color.White
-                                        )
-                                    }
+                                    if (!isToddler) {
+                                        // Save to Library List Button
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.getKidPlaylists { lists ->
+                                                    kidPlaylists = lists
+                                                    showAddToPlaylistDialog = true
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(SurfaceLightDark)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PlaylistAdd,
+                                                contentDescription = "Save to Library List",
+                                                tint = Color.White
+                                            )
+                                        }
 
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
 
                                     // Favorite Button
                                     IconButton(
@@ -444,7 +455,7 @@ fun PlayerScreen(
     }
 
     // Add to Custom Library List Dialog
-    if (showAddToPlaylistDialog) {
+    if (showAddToPlaylistDialog && !isToddler) {
         AlertDialog(
             onDismissRequest = { showAddToPlaylistDialog = false },
             title = {
@@ -526,7 +537,7 @@ fun PlayerScreen(
     }
 
     // Create New List from Player Dialog
-    if (showCreateInPlayer) {
+    if (showCreateInPlayer && !isToddler) {
         AlertDialog(
             onDismissRequest = { showCreateInPlayer = false },
             title = { Text("New List Name", fontWeight = FontWeight.Bold) },
