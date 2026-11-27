@@ -582,3 +582,11 @@ data class ClientCrashReportDto(
     @SerializedName("userRole") val userRole: String? = null,
     @SerializedName("timestamp") val timestamp: String = ""
 )
+
+data class StoryCategoryInfoDto(
+    @SerializedName("id") val id: String = "",
+    @SerializedName("name") val name: String = "",
+    @SerializedName("emoji") val emoji: String = "📖",
+    @SerializedName("description") val description: String = "",
+    @SerializedName("count") val count: Int = 0
+)

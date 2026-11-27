@@ -1086,6 +1086,25 @@ class FamiTubeRepository(
     }
 
     // Storybooks & Read-Along
+    suspend fun getStoryCategories(
+        ageRating: String? = null,
+        includeAllAges: Boolean = false
+    ): Result<List<StoryCategoryInfoDto>> {
+        return try {
+            val res = api.getStoryCategories(
+                ageRating = ageRating,
+                includeAllAges = if (includeAllAges) true else null
+            )
+            if (res.success && res.data != null) {
+                Result.success(res.data)
+            } else {
+                Result.success(FallbackStoryCatalog.getCategories(ageRating, includeAllAges))
+            }
+        } catch (_: Exception) {
+            Result.success(FallbackStoryCatalog.getCategories(ageRating, includeAllAges))
+        }
+    }
+
     suspend fun getStories(
         ageRating: String? = null,
         language: String? = null,
@@ -1108,10 +1127,10 @@ class FamiTubeRepository(
             if (res.success && res.data != null) {
                 Result.success(res.data)
             } else {
-                Result.success(FallbackStoryCatalog.filter(ageRating, language, includeAllAges))
+                Result.success(FallbackStoryCatalog.filter(ageRating, language, includeAllAges, category))
             }
         } catch (_: Exception) {
-            Result.success(FallbackStoryCatalog.filter(ageRating, language, includeAllAges))
+            Result.success(FallbackStoryCatalog.filter(ageRating, language, includeAllAges, category))
         }
     }
 
@@ -1177,7 +1196,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0001/01.jpg",
             ageRating = "TODDLER",
             language = "en",
-            category = "Stories & Reading",
+            category = "Animals & Pets",
             rewardFamibux = 20,
             pages = listOf(
                 StoryPageDto(1, "A fawn was racing in the forest.", "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0001/01.jpg", "📖✨", "#1E293B"),
@@ -1201,7 +1220,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0002/01.jpg",
             ageRating = "TODDLER",
             language = "en",
-            category = "Stories & Reading",
+            category = "Animals & Pets",
             rewardFamibux = 20,
             pages = listOf(
                 StoryPageDto(1, "This is a fat king.", "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0002/01.jpg", "📖✨", "#1E293B"),
@@ -1221,7 +1240,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0003/01.jpg",
             ageRating = "YOUNG_KIDS",
             language = "en",
-            category = "Stories & Reading",
+            category = "Nature & Science",
             rewardFamibux = 30,
             pages = listOf(
                 StoryPageDto(1, "Everytime I finish my hot, hot bath, My wet body feels so cool, cool cool. Who makes that happen? Vayu the Wind!", "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0003/01.jpg", "📖✨", "#1E293B"),
@@ -1244,7 +1263,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0004/01.jpg",
             ageRating = "YOUNG_KIDS",
             language = "en",
-            category = "Stories & Reading",
+            category = "Friendship & Kindness",
             rewardFamibux = 30,
             pages = listOf(
                 StoryPageDto(1, "Chuskit woke up early that morning. It was a very special day and she was too excited to sleep. She eagerly looked out of the room through the window next to her bed. It was spring time in Ladakh and the apricot trees were in full bloom. Two magpies had already begun their day and were busy looking for insects to eat. Her Ama-ley was awake too. She could hear her in the kitchen making gur-gur tea.", "https://raw.githubusercontent.com/global-asp/pb-imagebank/master/medium/0004/01.jpg", "📖✨", "#1E293B"),
@@ -1278,7 +1297,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://raw.githubusercontent.com/trionoputra/cerita-rakyat/master/app/src/main/assets/Jawa/Asal%20Mula%20Batu%20Kuwung/i_e79cb85adcbe0901_html_13117a81.jpg",
             ageRating = "YOUNG_KIDS",
             language = "id",
-            category = "Stories & Reading",
+            category = "Folk Tales & Legends",
             rewardFamibux = 30,
             pages = listOf(
                 StoryPageDto(1, "Dahulu, ada seorang Saudagar yang kaya raya. Saudagar ini perilakunya buruk. Ia sombong dan kikir. Karena budi pekertinya yang buruk penduduk desa sangat membencinya. Pada suatu hari, sang Saudagar kedatangan pengemis berkaki pincangmeminta makanan. Bukannya memberi, Saudagar itu malah menghardik dan mencaci maki. Si Pengemis didorong oleh saudagar hingga jatuh tersungkur. Mendapat perlakuan seperti itu, si Pengemis pun marah.", "https://raw.githubusercontent.com/trionoputra/cerita-rakyat/master/app/src/main/assets/Jawa/Asal%20Mula%20Batu%20Kuwung/i_e79cb85adcbe0901_html_13117a81.jpg", "🇮🇩📜", "#1E293B"),
@@ -1296,7 +1315,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://raw.githubusercontent.com/trionoputra/cerita-rakyat/master/app/src/main/assets/Jawa/Cindelaras/i_b5e81cc34a096363_html_77515527.jpg",
             ageRating = "YOUNG_KIDS",
             language = "id",
-            category = "Stories & Reading",
+            category = "Folk Tales & Legends",
             rewardFamibux = 30,
             pages = listOf(
                 StoryPageDto(1, "Raden Putra adalah raja Kerajaan Jenggala. Ia didampingi seorang permaisuri yang baik hati dan seorang selir yang cantik jelita. Tetapi, selir Raja Raden Putra memiliki sifat iri dan dengki terhadap sang permaisuri. Ia merencanakan suatu yang buruk kepada permaisuri.", "https://raw.githubusercontent.com/trionoputra/cerita-rakyat/master/app/src/main/assets/Jawa/Cindelaras/i_b5e81cc34a096363_html_77515527.jpg", "🇮🇩📜", "#1E293B"),
@@ -1315,7 +1334,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=720&h=440&fit=crop",
             ageRating = "TODDLER",
             language = "id",
-            category = "Stories & Reading",
+            category = "Animals & Pets",
             rewardFamibux = 20,
             pages = listOf(
                 StoryPageDto(1, "Kancil merasa sangat lapar di tepi sungai yang rimbun.", "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=720&h=440&fit=crop", "🦌🌿", "#064E3B"),
@@ -1333,7 +1352,7 @@ object FallbackStoryCatalog {
             coverUrl = "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=720&h=440&fit=crop",
             ageRating = "TODDLER",
             language = "id",
-            category = "Stories & Reading",
+            category = "Animals & Pets",
             rewardFamibux = 20,
             pages = listOf(
                 StoryPageDto(1, "Kancil yang lincah menantang Kura-kura untuk berlomba lari.", "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=720&h=440&fit=crop", "🦌💨", "#1E293B"),
@@ -1346,7 +1365,38 @@ object FallbackStoryCatalog {
 
     fun findById(id: String): StoryBookDto? = books.find { it.id == id }
 
-    fun filter(ageRating: String?, language: String?, includeAllAges: Boolean): List<StoryBookDto> {
+    fun getCategories(ageRating: String?, includeAllAges: Boolean): List<StoryCategoryInfoDto> {
+        val age = ageRating?.uppercase() ?: ""
+        return if (!includeAllAges && age == "TODDLER") {
+            listOf(
+                StoryCategoryInfoDto("animals-pets", "Animals & Pets", "🐾", "Cute animals, pets, and funny creatures", 15),
+                StoryCategoryInfoDto("colors-words", "Colors & First Words", "🎨", "Early vocabulary, shapes, and colorful concepts", 13),
+                StoryCategoryInfoDto("faith-values", "Faith & Values", "🕊️", "Gentle moral lessons, empathy, and bedtime prayers", 10),
+                StoryCategoryInfoDto("family-daily", "Family & Daily Life", "🏡", "Routines, family bonds, and cozy moments", 9),
+                StoryCategoryInfoDto("bedtime-sleep", "Bedtime & Sleep", "🌙", "Soothing tales and lullaby stories for sleep", 6),
+                StoryCategoryInfoDto("rhymes-music", "Rhymes & Music", "🎶", "Rhythmic verses, songs, and playful sounds", 5)
+            )
+        } else if (!includeAllAges && (age == "OLDER_KIDS" || age == "ALL")) {
+            emptyList()
+        } else {
+            listOf(
+                StoryCategoryInfoDto("friendship-kindness", "Friendship & Kindness", "🤝", "Heartwarming tales about caring, sharing, and helping others", 49),
+                StoryCategoryInfoDto("folk-tales", "Folk Tales & Legends", "🌍", "Classic folklore, mythology, and timeless cultural fables", 32),
+                StoryCategoryInfoDto("funny-silly", "Funny & Silly Stories", "😄", "Hilarious adventures, quirky mishaps, and playful laughs", 28),
+                StoryCategoryInfoDto("nature-science", "Nature & Science", "🌿", "Wonders of the natural world, plants, weather, and simple science", 18),
+                StoryCategoryInfoDto("faith-values", "Faith & Values", "🕊️", "Inspirational moral stories, honesty, and spiritual growth", 18),
+                StoryCategoryInfoDto("animals-pets", "Animals & Pets", "🐾", "Lovable creatures, animal friendships, and wilderness journeys", 15),
+                StoryCategoryInfoDto("animal-adventures", "Animal Adventures", "🦊", "Thrilling wildlife journeys and daring animal protagonists", 13),
+                StoryCategoryInfoDto("colors-words", "Colors & First Words", "🎨", "Early vocabulary, shapes, and colorful concepts", 13),
+                StoryCategoryInfoDto("family-daily", "Family & Daily Life", "🏡", "Routines, family bonds, and cozy moments", 9),
+                StoryCategoryInfoDto("courage-growing", "Courage & Growing Up", "🦁", "Overcoming fears, building resilience, and embracing new challenges", 6),
+                StoryCategoryInfoDto("bedtime-sleep", "Bedtime & Sleep", "🌙", "Soothing tales and lullaby stories for sleep", 6),
+                StoryCategoryInfoDto("rhymes-music", "Rhymes & Music", "🎶", "Rhythmic verses, songs, and playful sounds", 5)
+            )
+        }
+    }
+
+    fun filter(ageRating: String?, language: String?, includeAllAges: Boolean, category: String? = null): List<StoryBookDto> {
         val age = ageRating?.uppercase() ?: ""
         if (!includeAllAges && (age == "OLDER_KIDS" || age == "ALL")) return emptyList()
         return books.filter { b ->
@@ -1356,7 +1406,8 @@ object FallbackStoryCatalog {
                 else -> false
             }
             val langOk = language.isNullOrBlank() || language == "bilingual" || b.language.equals(language, ignoreCase = true)
-            ageOk && langOk
+            val catOk = category.isNullOrBlank() || b.category.equals(category, ignoreCase = true)
+            ageOk && langOk && catOk
         }.let { list ->
             if (!includeAllAges && age == "YOUNG_KIDS") {
                 list.sortedBy { if (it.ageRating == "YOUNG_KIDS") 0 else 1 }

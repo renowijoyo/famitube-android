@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.famitube.app.data.model.StoryBookDto
+import com.famitube.app.data.model.StoryCategoryInfoDto
 import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -40,11 +41,22 @@ fun StoryLibraryScreen(
 ) {
     val scope = rememberCoroutineScope()
     var stories by remember { mutableStateOf<List<StoryBookDto>>(emptyList()) }
+    var categories by remember { mutableStateOf<List<StoryCategoryInfoDto>>(emptyList()) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var browseAllAges by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
     val isOlderTier = currentAgeFilter == "OLDER_KIDS" || currentAgeFilter == "ALL"
+
+    LaunchedEffect(currentAgeFilter, browseAllAges) {
+        selectedCategory = null
+        val catRes = repository.getStoryCategories(
+            ageRating = currentAgeFilter,
+            includeAllAges = browseAllAges
+        )
+        categories = catRes.getOrDefault(emptyList())
+    }
 
     fun loadStories() {
         scope.launch {
@@ -53,14 +65,15 @@ fun StoryLibraryScreen(
                 ageRating = currentAgeFilter,
                 language = null,
                 includeAllAges = browseAllAges,
-                search = searchQuery.trim()
+                search = searchQuery.trim(),
+                category = selectedCategory
             )
             stories = res.getOrDefault(emptyList())
             isLoading = false
         }
     }
 
-    LaunchedEffect(currentAgeFilter, browseAllAges, searchQuery) {
+    LaunchedEffect(currentAgeFilter, browseAllAges, searchQuery, selectedCategory) {
         loadStories()
     }
 
@@ -124,7 +137,10 @@ fun StoryLibraryScreen(
         }
 
         item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 2.dp)
+            ) {
                 item {
                     FilterChip(
                         selected = browseAllAges,
@@ -132,6 +148,29 @@ fun StoryLibraryScreen(
                         label = {
                             Text(
                                 text = if (browseAllAges) "All Ages" else "Browse All",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedCategory == null,
+                        onClick = { selectedCategory = null },
+                        label = {
+                            Text("All Stories", fontWeight = FontWeight.SemiBold)
+                        }
+                    )
+                }
+                items(categories, key = { it.id }) { cat ->
+                    FilterChip(
+                        selected = selectedCategory == cat.name,
+                        onClick = {
+                            selectedCategory = if (selectedCategory == cat.name) null else cat.name
+                        },
+                        label = {
+                            Text(
+                                text = "${cat.emoji} ${cat.name}${if (cat.count > 0) " (${cat.count})" else ""}",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -278,6 +317,25 @@ private fun StoryBookShelfCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
+                    if (book.category.isNotBlank() && book.category != "Stories & Reading") {
+                        Text(
+                            text = "•",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            fontSize = 11.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = PinkPrimary.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = book.category,
+                                color = PinkPrimary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                 }
 
                 Text(

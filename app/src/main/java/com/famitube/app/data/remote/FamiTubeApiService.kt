@@ -287,6 +287,12 @@ interface FamiTubeApiService {
     ): ApiResponse<KidAchievementsDto>
 
     // Storybooks & Read-Along
+    @GET("stories/categories")
+    suspend fun getStoryCategories(
+        @Query("ageRating") ageRating: String? = null,
+        @Query("includeAllAges") includeAllAges: Boolean? = null
+    ): ApiResponse<List<StoryCategoryInfoDto>>
+
     @GET("stories")
     suspend fun getStories(
         @Query("ageRating") ageRating: String? = null,
