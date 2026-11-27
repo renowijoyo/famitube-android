@@ -308,4 +308,9 @@ interface FamiTubeApiService {
         @Path("id") id: String,
         @Body body: CompleteStoryRequest
     ): ApiResponse<CompleteStoryResponseDto>
+
+    @POST("telemetry/crash-report")
+    suspend fun sendCrashReport(
+        @Body body: ClientCrashReportDto
+    ): ApiResponse<Any>
 }

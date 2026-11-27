@@ -1152,6 +1152,19 @@ class FamiTubeRepository(
             Result.success(CompleteStoryResponseDto(awardedFamibux = localAward, mode = mode))
         }
     }
+
+    suspend fun sendCrashReport(report: ClientCrashReportDto): Result<Unit> {
+        return try {
+            val res = api.sendCrashReport(report)
+            if (res.success) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(res.message ?: "Failed to send crash report"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 object FallbackStoryCatalog {

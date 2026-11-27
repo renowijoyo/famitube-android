@@ -5,6 +5,7 @@ import com.famitube.app.data.local.AchievementManager
 import com.famitube.app.data.local.ParentalPreferences
 import com.famitube.app.data.local.StarPointsManager
 import com.famitube.app.data.repository.FamiTubeRepository
+import com.famitube.app.util.CrashReporter
 
 class FamiTubeApp : Application() {
 
@@ -22,9 +23,11 @@ class FamiTubeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReporter.init(this)
         preferences = ParentalPreferences(this)
         starPointsManager = StarPointsManager(this, preferences)
         achievementManager = AchievementManager(this, preferences, starPointsManager)
         repository = FamiTubeRepository(preferences, achievementManager, starPointsManager, this)
+        CrashReporter.dispatchPendingCrashReports(this, repository)
     }
 }

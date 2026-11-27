@@ -569,3 +569,16 @@ data class CompleteStoryResponseDto(
     @SerializedName("mode") val mode: String = "READ_ALONG",
     @SerializedName("summary") val summary: KidAchievementsDto? = null
 )
+
+data class ClientCrashReportDto(
+    @SerializedName("appVersion") val appVersion: String = "",
+    @SerializedName("deviceModel") val deviceModel: String = "",
+    @SerializedName("osVersion") val osVersion: String = "",
+    @SerializedName("currentRoute") val currentRoute: String = "",
+    @SerializedName("errorType") val errorType: String = "",
+    @SerializedName("message") val message: String = "",
+    @SerializedName("stackTrace") val stackTrace: String = "",
+    @SerializedName("userId") val userId: String? = null,
+    @SerializedName("userRole") val userRole: String? = null,
+    @SerializedName("timestamp") val timestamp: String = ""
+)

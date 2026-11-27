@@ -72,6 +72,7 @@ fun FamiTubeNavGraph(
     val isSimpleMode = ageFilter == "TODDLER"
 
     LaunchedEffect(currentRoute) {
+        currentRoute?.let { com.famitube.app.util.CrashReporter.currentRoute = it }
         if (repository.isLoggedIn()) {
             while (true) {
                 repository.getNotifications(50).onSuccess { data ->
