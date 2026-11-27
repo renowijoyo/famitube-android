@@ -41,7 +41,6 @@ fun StoryLibraryScreen(
     val scope = rememberCoroutineScope()
     var stories by remember { mutableStateOf<List<StoryBookDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var selectedLang by remember { mutableStateOf<String?>(null) }
     var browseAllAges by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -52,7 +51,7 @@ fun StoryLibraryScreen(
             isLoading = true
             val res = repository.getStories(
                 ageRating = currentAgeFilter,
-                language = selectedLang,
+                language = null,
                 includeAllAges = browseAllAges,
                 search = searchQuery.trim()
             )
@@ -61,7 +60,7 @@ fun StoryLibraryScreen(
         }
     }
 
-    LaunchedEffect(currentAgeFilter, selectedLang, browseAllAges, searchQuery) {
+    LaunchedEffect(currentAgeFilter, browseAllAges, searchQuery) {
         loadStories()
     }
 
@@ -126,18 +125,6 @@ fun StoryLibraryScreen(
 
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val langOptions = listOf(
-                    null to "All",
-                    "en" to "🇬🇧 English",
-                    "id" to "🇮🇩 Indonesia"
-                )
-                items(langOptions) { (code, label) ->
-                    FilterChip(
-                        selected = selectedLang == code,
-                        onClick = { selectedLang = code },
-                        label = { Text(label, fontWeight = FontWeight.SemiBold) }
-                    )
-                }
                 item {
                     FilterChip(
                         selected = browseAllAges,
