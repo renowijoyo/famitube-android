@@ -1,13 +1,9 @@
 package com.famitube.app.ui.screens.parental
 
-import android.app.Activity
-import android.app.DatePickerDialog
-import android.content.ContextWrapper
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -152,6 +148,40 @@ fun ParentDashboardScreen(
                 }
             )
         }
+        return
+    }
+
+    if (childToEdit != null) {
+        val target = childToEdit!!
+        EditChildControlsView(
+            child = target,
+            globalControls = globalControls,
+            onBack = { childToEdit = null },
+            onWakeToddlerTv = { onDone ->
+                scope.launch {
+                    val res = repository.wakeChildToddlerTv(target.id)
+                    res.onSuccess {
+                        Toast.makeText(context, "Toddler TV woken up for ${target.name}!", Toast.LENGTH_SHORT).show()
+                        onDone(null)
+                    }.onFailure { err ->
+                        onDone(err.message ?: "Failed to wake Toddler TV")
+                    }
+                }
+            },
+            onSave = { overrides, onDone ->
+                scope.launch {
+                    val res = repository.updateParentChildOverrides(target.id, overrides)
+                    res.onSuccess { updated ->
+                        children = children.map { if (it.id == target.id) updated else it }
+                        childToEdit = null
+                        Toast.makeText(context, "Updated controls for ${target.name}", Toast.LENGTH_SHORT).show()
+                        onDone(null)
+                    }.onFailure { err ->
+                        onDone(err.message ?: "Failed to update overrides")
+                    }
+                }
+            }
+        )
         return
     }
 
@@ -362,42 +392,7 @@ fun ParentDashboardScreen(
         }
     }
 
-    // Child creation & child activity history are rendered as their own page views above
-
-// Child activity history is displayed as its own page view above
-
-    if (childToEdit != null) {
-        val target = childToEdit!!
-        ChildOverrideDialog(
-            child = target,
-            globalControls = globalControls,
-            onDismiss = { childToEdit = null },
-            onWakeToddlerTv = { onDone ->
-                scope.launch {
-                    val res = repository.wakeChildToddlerTv(target.id)
-                    res.onSuccess {
-                        Toast.makeText(context, "Toddler TV woken up for ${target.name}!", Toast.LENGTH_SHORT).show()
-                        onDone(null)
-                    }.onFailure { err ->
-                        onDone(err.message ?: "Failed to wake Toddler TV")
-                    }
-                }
-            },
-            onSave = { overrides, onDone ->
-                scope.launch {
-                    val res = repository.updateParentChildOverrides(target.id, overrides)
-                    res.onSuccess { updated ->
-                        children = children.map { if (it.id == target.id) updated else it }
-                        childToEdit = null
-                        Toast.makeText(context, "Updated controls for ${target.name}", Toast.LENGTH_SHORT).show()
-                        onDone(null)
-                    }.onFailure { err ->
-                        onDone(err.message ?: "Failed to update overrides")
-                    }
-                }
-            }
-        )
-    }
+    // Child creation, child activity history, and edit child controls are rendered as their own page views above
 
     if (childToDelete != null) {
         val target = childToDelete!!
@@ -1082,6 +1077,7 @@ private fun ControlsTab(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddChildAccountView(
     onBack: () -> Unit,
@@ -1104,6 +1100,7 @@ private fun AddChildAccountView(
     var religion by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val ageOptions = listOf(
         "TODDLER" to "Tier 1: Toddler (1.5-3)",
@@ -1135,56 +1132,55 @@ private fun AddChildAccountView(
         }
     }
 
-    val hostingActivity = remember(context) {
-        var c = context
-        while (c is ContextWrapper) {
-            if (c is Activity) return@remember c
-            c = c.baseContext
+    if (showDatePicker) {
+        val initialMillis = remember(birthday) {
+            val parts = birthday.trim().split("-")
+            if (parts.size == 3) {
+                val y = parts[0].toIntOrNull()
+                val m = parts[1].toIntOrNull()
+                val d = parts[2].toIntOrNull()
+                if (y != null && m != null && d != null && m in 1..12 && d in 1..31) {
+                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+                    cal.set(y, m - 1, d, 0, 0, 0)
+                    cal.timeInMillis
+                } else System.currentTimeMillis()
+            } else System.currentTimeMillis()
         }
-        null
-    }
-
-    fun openDatePicker() {
-        val cal = java.util.Calendar.getInstance()
-        val parts = birthday.trim().split("-")
-        var initYear = cal.get(java.util.Calendar.YEAR)
-        var initMonth = cal.get(java.util.Calendar.MONTH)
-        var initDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
-        if (parts.size == 3) {
-            val y = parts[0].toIntOrNull()
-            val m = parts[1].toIntOrNull()
-            val d = parts[2].toIntOrNull()
-            if (y != null && m != null && d != null && m in 1..12 && d in 1..31) {
-                initYear = y
-                initMonth = m - 1
-                initDay = d
-            }
-        }
-        val dialogContext = hostingActivity ?: context
-        val datePicker = DatePickerDialog(
-            dialogContext,
-            { _, year, monthOfYear, dayOfMonth ->
-                val formatted = String.format("%04d-%02d-%02d", year, monthOfYear + 1, dayOfMonth)
-                birthday = formatted
-                errorMsg = null
-                suggestTierFromBirthday(formatted)?.let { suggested ->
-                    ageRating = suggested
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = millis
+                            }
+                            val formatted = String.format(
+                                "%04d-%02d-%02d",
+                                cal.get(java.util.Calendar.YEAR),
+                                cal.get(java.util.Calendar.MONTH) + 1,
+                                cal.get(java.util.Calendar.DAY_OF_MONTH)
+                            )
+                            birthday = formatted
+                            errorMsg = null
+                            suggestTierFromBirthday(formatted)?.let { ageRating = it }
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK", color = PinkPrimary, fontWeight = FontWeight.Bold)
                 }
             },
-            initYear,
-            initMonth,
-            initDay
-        )
-        datePicker.datePicker.maxDate = System.currentTimeMillis()
-        datePicker.show()
-    }
-
-    val birthdayInteractionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(birthdayInteractionSource) {
-        birthdayInteractionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Release) {
-                openDatePicker()
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
             }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -1282,21 +1278,27 @@ private fun AddChildAccountView(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            OutlinedTextField(
-                value = birthday,
-                onValueChange = {},
-                readOnly = true,
-                interactionSource = birthdayInteractionSource,
-                label = { Text("Birthday (Date Picker)") },
-                placeholder = { Text("Tap to select birthday (YYYY-MM-DD)") },
-                trailingIcon = {
-                    IconButton(onClick = { openDatePicker() }) {
-                        Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
-                    }
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = birthday,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Birthday (Date Picker)") },
+                    placeholder = { Text("Tap to select birthday (YYYY-MM-DD)") },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { showDatePicker = true }
+                )
+            }
             Text(
                 text = "Selecting birthday automatically suggests the recommended age tier below.",
                 style = MaterialTheme.typography.bodySmall,
@@ -1443,11 +1445,12 @@ private fun AddChildAccountView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChildOverrideDialog(
+private fun EditChildControlsView(
     child: ParentChildDto,
     globalControls: GlobalParentalControlsDto,
-    onDismiss: () -> Unit,
+    onBack: () -> Unit,
     onWakeToddlerTv: ((String?) -> Unit) -> Unit = {},
     onSave: (Map<String, Any?>, (String?) -> Unit) -> Unit
 ) {
@@ -1481,232 +1484,216 @@ private fun ChildOverrideDialog(
         "Cartoons & Fun"
     )
 
-    AlertDialog(
-        onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text("${child.name} — Age-Specific Controls", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Global defaults: ${globalControls.dailyLimitMinutes}m/day • ${globalControls.contentLanguage.uppercase()} • PIN ${globalControls.parentPin}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    listOf("TODDLER" to "T1: 1.5-3", "YOUNG_KIDS" to "T2: 4-6", "OLDER_KIDS" to "T3: 7+", "ALL" to "All").forEach { (code, label) ->
-                        FilterChip(
-                            selected = ageRating == code,
-                            onClick = { ageRating = code },
-                            label = { Text(label, fontSize = 10.sp) },
-                            modifier = Modifier.weight(1f)
+    fun doSave() {
+        if (pin.length != 4) {
+            errorMsg = "PIN must be 4 digits"
+            return
+        }
+        isSaving = true
+        onSave(
+            mapOf(
+                "dailyLimitMinutes" to (dailyLimit.toIntOrNull() ?: globalControls.dailyLimitMinutes),
+                "parentPin" to pin,
+                "ageRating" to ageRating,
+                "attentionTrackingEnabled" to attentionEnabled,
+                "youtubeSearchEnabled" to if (ageRating == "TODDLER") false else ytEnabled,
+                "toddlerLoopMinutes" to toddlerLoopMinutes,
+                "toddlerCooldownMinutes" to toddlerCooldownMinutes,
+                "toddlerSubStage" to toddlerSubStage,
+                "contentLanguage" to contentLanguage,
+                "cultureMode" to cultureMode,
+                "religion" to religion,
+                "toddlerEnabledTopics" to allToddlerTopics.filter { it in enabledTopics }
+            )
+        ) { err ->
+            isSaving = false
+            if (err != null) errorMsg = err
+        }
+    }
+
+    BackHandler(enabled = !isSaving) { onBack() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "${child.name} • Parental Controls",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Individual settings & age tier overrides",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-                if (ageRating == "TODDLER") {
-                    Text("Toddler TV Session Loop", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(10, 15, 20).forEach { mins ->
-                            FilterChip(
-                                selected = toddlerLoopMinutes == mins,
-                                onClick = { toddlerLoopMinutes = mins },
-                                label = { Text("${mins}m", fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack, enabled = !isSaving) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                    Text("Nap Cooldown", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(15, 30, 45, 60).forEach { mins ->
-                            FilterChip(
-                                selected = toddlerCooldownMinutes == mins,
-                                onClick = { toddlerCooldownMinutes = mins },
-                                label = { Text("${mins}m", fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Text("Sub-stage", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("AUTO" to "Auto", "EARLY" to "1.5-2y", "OLDER" to "2-3y").forEach { (code, label) ->
-                            FilterChip(
-                                selected = toddlerSubStage == code,
-                                onClick = { toddlerSubStage = code },
-                                label = { Text(label, fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Text("Language & Culture", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("all" to "All", "en" to "EN", "id" to "ID", "bilingual" to "EN+ID").forEach { (code, label) ->
-                            FilterChip(
-                                selected = contentLanguage == code,
-                                onClick = { contentLanguage = code },
-                                label = { Text(label, fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("GLOBAL" to "Global", "ID" to "Indonesia").forEach { (code, label) ->
-                            FilterChip(
-                                selected = cultureMode == code,
-                                onClick = { cultureMode = code },
-                                label = { Text(label, fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Text("Enabled TV Channels", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    allToddlerTopics.forEach { topic ->
-                        val checked = topic in enabledTopics
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    enabledTopics = if (checked && enabledTopics.size > 1) {
-                                        enabledTopics - topic
-                                    } else {
-                                        enabledTopics + topic
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = checked,
-                                onCheckedChange = { next ->
-                                    enabledTopics = if (!next && enabledTopics.size > 1) {
-                                        enabledTopics - topic
-                                    } else if (next) {
-                                        enabledTopics + topic
-                                    } else enabledTopics
-                                }
-                            )
-                            Text(topic, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            isSaving = true
-                            onWakeToddlerTv { err ->
-                                isSaving = false
-                                if (err != null) errorMsg = err
-                            }
-                        },
+                },
+                actions = {
+                    Button(
+                        onClick = { doSave() },
                         enabled = !isSaving,
-                        modifier = Modifier.fillMaxWidth()
+                        colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        Text("☀️ Wake Up Toddler TV Now")
+                        Text(if (isSaving) "Saving..." else "Save")
                     }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = dailyLimit,
-                            onValueChange = { if (it.all(Char::isDigit)) dailyLimit = it },
-                            label = { Text("Limit (m)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Tune,
+                        contentDescription = null,
+                        tint = PinkPrimary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Global defaults: ${globalControls.dailyLimitMinutes}m/day • ${globalControls.contentLanguage.uppercase()} • PIN ${globalControls.parentPin}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Text("Age Rating Tier", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("TODDLER" to "T1: 1.5-3", "YOUNG_KIDS" to "T2: 4-6", "OLDER_KIDS" to "T3: 7+", "ALL" to "All").forEach { (code, label) ->
+                    FilterChip(
+                        selected = ageRating == code,
+                        onClick = { ageRating = code },
+                        label = { Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            if (ageRating == "TODDLER") {
+                Text("Toddler TV Session Loop", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(10, 15, 20).forEach { mins ->
+                        FilterChip(
+                            selected = toddlerLoopMinutes == mins,
+                            onClick = { toddlerLoopMinutes = mins },
+                            label = { Text("${mins}m", fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
-                            value = pin,
-                            onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
-                            label = { Text("PIN") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
+                    }
+                }
+
+                Text("Nap Cooldown", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(15, 30, 45, 60).forEach { mins ->
+                        FilterChip(
+                            selected = toddlerCooldownMinutes == mins,
+                            onClick = { toddlerCooldownMinutes = mins },
+                            label = { Text("${mins}m", fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+
+                Text("Development Sub-stage", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("AUTO" to "Auto", "EARLY" to "1.5-2y", "OLDER" to "2-3y").forEach { (code, label) ->
+                        FilterChip(
+                            selected = toddlerSubStage == code,
+                            onClick = { toddlerSubStage = code },
+                            label = { Text(label, fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Text("Language & Culture Mode", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("all" to "All", "en" to "EN", "id" to "ID", "bilingual" to "EN+ID").forEach { (code, label) ->
+                        FilterChip(
+                            selected = contentLanguage == code,
+                            onClick = { contentLanguage = code },
+                            label = { Text(label, fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("GLOBAL" to "Global", "ID" to "Indonesia").forEach { (code, label) ->
+                        FilterChip(
+                            selected = cultureMode == code,
+                            onClick = { cultureMode = code },
+                            label = { Text(label, fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Text("Enabled TV Channels", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                allToddlerTopics.forEach { topic ->
+                    val checked = topic in enabledTopics
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                enabledTopics = if (checked && enabledTopics.size > 1) {
+                                    enabledTopics - topic
+                                } else {
+                                    enabledTopics + topic
+                                }
+                            },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Attention Check", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = attentionEnabled, onCheckedChange = { attentionEnabled = it })
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("YouTube Search", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = ytEnabled, onCheckedChange = { ytEnabled = it })
-                    }
-                }
-                Text("Faith & Religious Content Filter", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "Optional faith setting. If None, videos and stories with religious themes are completely hidden.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                val relOptions = listOf(
-                    "NONE" to "None (Secular Only)",
-                    "ISLAM" to "Islam",
-                    "CHRISTIANITY" to "Christianity",
-                    "CATHOLICISM" to "Catholicism",
-                    "HINDUISM" to "Hinduism",
-                    "BUDDHISM" to "Buddhism",
-                    "JUDAISM" to "Judaism",
-                    "CONFUCIANISM" to "Confucianism"
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    relOptions.take(2).forEach { (code, label) ->
-                        FilterChip(
-                            selected = if (code == "NONE") religion == null else religion == code,
-                            onClick = { religion = if (code == "NONE") null else code },
-                            label = { Text(label, fontSize = 10.sp) },
-                            modifier = Modifier.weight(1f)
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = { next ->
+                                enabledTopics = if (!next && enabledTopics.size > 1) {
+                                    enabledTopics - topic
+                                } else if (next) {
+                                    enabledTopics + topic
+                                } else enabledTopics
+                            }
                         )
+                        Text(topic, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    relOptions.slice(2..4).forEach { (code, label) ->
-                        FilterChip(
-                            selected = religion == code,
-                            onClick = { religion = code },
-                            label = { Text(label, fontSize = 10.sp) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    relOptions.drop(5).forEach { (code, label) ->
-                        FilterChip(
-                            selected = religion == code,
-                            onClick = { religion = code },
-                            label = { Text(label, fontSize = 10.sp) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
+
                 OutlinedButton(
                     onClick = {
                         isSaving = true
-                        onSave(
-                            mapOf(
-                                "parentPin" to null,
-                                "dailyLimitMinutes" to null,
-                                "ageRating" to null,
-                                "religion" to null,
-                                "attentionTrackingEnabled" to null,
-                                "youtubeSearchEnabled" to null
-                            )
-                        ) { err ->
+                        onWakeToddlerTv { err ->
                             isSaving = false
                             if (err != null) errorMsg = err
                         }
@@ -1714,35 +1701,117 @@ private fun ChildOverrideDialog(
                     enabled = !isSaving,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Reset to Global Controls")
+                    Text("☀️ Wake Up Toddler TV Now")
                 }
-                if (errorMsg != null) {
-                    Text(errorMsg!!, color = PinkLight, style = MaterialTheme.typography.bodySmall)
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = dailyLimit,
+                        onValueChange = { if (it.all(Char::isDigit)) dailyLimit = it },
+                        label = { Text("Daily Limit (minutes)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) pin = it },
+                        label = { Text("Parent PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Camera Attention Check", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Auto-pause video when child looks away", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(checked = attentionEnabled, onCheckedChange = { attentionEnabled = it })
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("YouTube Search Enabled", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Allow searching allowed channels on YouTube", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(checked = ytEnabled, onCheckedChange = { ytEnabled = it })
+                        }
+                    }
                 }
             }
-        },
-        confirmButton = {
-            Button(
+
+            Text("Faith & Religious Content Filter", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Optional faith filter. If None, videos and stories with religious themes are completely hidden.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val relOptions = listOf(
+                "NONE" to "None (Secular Only)",
+                "ISLAM" to "Islam",
+                "CHRISTIANITY" to "Christianity",
+                "CATHOLICISM" to "Catholicism",
+                "HINDUISM" to "Hinduism",
+                "BUDDHISM" to "Buddhism",
+                "JUDAISM" to "Judaism",
+                "CONFUCIANISM" to "Confucianism"
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                relOptions.take(2).forEach { (code, label) ->
+                    FilterChip(
+                        selected = if (code == "NONE") religion == null else religion == code,
+                        onClick = { religion = if (code == "NONE") null else code },
+                        label = { Text(label, fontSize = 10.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                relOptions.slice(2..4).forEach { (code, label) ->
+                    FilterChip(
+                        selected = religion == code,
+                        onClick = { religion = code },
+                        label = { Text(label, fontSize = 10.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                relOptions.drop(5).forEach { (code, label) ->
+                    FilterChip(
+                        selected = religion == code,
+                        onClick = { religion = code },
+                        label = { Text(label, fontSize = 10.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            OutlinedButton(
                 onClick = {
-                    if (pin.length != 4) {
-                        errorMsg = "PIN must be 4 digits"
-                        return@Button
-                    }
                     isSaving = true
                     onSave(
                         mapOf(
-                            "dailyLimitMinutes" to (dailyLimit.toIntOrNull() ?: globalControls.dailyLimitMinutes),
-                            "parentPin" to pin,
-                            "ageRating" to ageRating,
-                            "attentionTrackingEnabled" to attentionEnabled,
-                            "youtubeSearchEnabled" to if (ageRating == "TODDLER") false else ytEnabled,
-                            "toddlerLoopMinutes" to toddlerLoopMinutes,
-                            "toddlerCooldownMinutes" to toddlerCooldownMinutes,
-                            "toddlerSubStage" to toddlerSubStage,
-                            "contentLanguage" to contentLanguage,
-                            "cultureMode" to cultureMode,
-                            "religion" to religion,
-                            "toddlerEnabledTopics" to allToddlerTopics.filter { it in enabledTopics }
+                            "parentPin" to null,
+                            "dailyLimitMinutes" to null,
+                            "ageRating" to null,
+                            "religion" to null,
+                            "attentionTrackingEnabled" to null,
+                            "youtubeSearchEnabled" to null
                         )
                     ) { err ->
                         isSaving = false
@@ -1750,17 +1819,28 @@ private fun ChildOverrideDialog(
                     }
                 },
                 enabled = !isSaving,
-                colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isSaving) "Saving..." else "Save Override")
+                Text("Reset to Global Controls")
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
-                Text("Cancel")
+
+            if (errorMsg != null) {
+                Text(errorMsg!!, color = PinkLight, style = MaterialTheme.typography.bodySmall)
             }
+
+            Button(
+                onClick = { doSave() },
+                enabled = !isSaving,
+                colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Text(if (isSaving) "Saving Changes..." else "Save Changes", fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
