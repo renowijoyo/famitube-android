@@ -53,6 +53,7 @@ import coil.compose.AsyncImage
 import com.famitube.app.data.model.StoryBookDto
 import com.famitube.app.data.repository.FamiTubeRepository
 import com.famitube.app.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -165,6 +166,41 @@ fun StoryReaderScreen(
         }
     }
 
+    fun flipToPage(delta: Int) {
+        if (delta > 0 && !isPageUnlocked) {
+            Toast.makeText(context, "Read all words aloud to unlock the next page!", Toast.LENGTH_SHORT).show()
+            hintMessage = "🔒 Read all words aloud to unlock the next page!"
+            return
+        }
+        val next = pageIndex + delta
+        if (next !in pages.indices) return
+        stopMic()
+        tts.stop()
+        pageIndex = next
+        val nextWords = StorySpeechMatcher.tokenize(pages[next].text)
+        currentWordIdx = if (next in completedPages) nextWords.size else 0
+        stuckAttempts = 0
+        lastTranscript = ""
+        hintMessage = ""
+    }
+
+    fun finishStory() {
+        val b = currentBook ?: return
+        if (!isPageUnlocked) {
+            Toast.makeText(context, "Read this page aloud to finish the story!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        stopMic()
+        tts.stop()
+        scope.launch {
+            val res = repository.completeStory(b.id, readingMode, b.rewardFamibux)
+            val data = res.getOrNull()
+            awardedFamibux = data?.awardedFamibux ?: b.rewardFamibux
+            alreadyRewardedToday = data?.alreadyRewardedToday ?: false
+            showCompleteDialog = true
+        }
+    }
+
     fun handleSpeechInput(transcript: String, isFinal: Boolean) {
         val b = currentBook ?: return
         if (pageWords.isEmpty() || currentWordIdx >= pageWords.size) return
@@ -176,7 +212,15 @@ fun StoryReaderScreen(
             if (currentWordIdx >= pageWords.size) {
                 if (pageIndex !in completedPages) completedPages.add(pageIndex)
                 stopMic()
-                hintMessage = "🎉 Awesome reading! Page unlocked!"
+                hintMessage = if (isLastPage) "🎉 Awesome reading! Finishing story..." else "🎉 Page Complete! Flipping to next page..."
+                scope.launch {
+                    delay(1200)
+                    if (isLastPage) {
+                        finishStory()
+                    } else {
+                        flipToPage(1)
+                    }
+                }
             } else {
                 hintMessage = ""
             }
@@ -191,9 +235,34 @@ fun StoryReaderScreen(
                 if (currentWordIdx >= pageWords.size) {
                     if (pageIndex !in completedPages) completedPages.add(pageIndex)
                     stopMic()
+                    hintMessage = if (isLastPage) "🎉 Awesome reading! Finishing story..." else "🎉 Page Complete! Flipping to next page..."
+                    scope.launch {
+                        delay(1200)
+                        if (isLastPage) {
+                            finishStory()
+                        } else {
+                            flipToPage(1)
+                        }
+                    }
                 }
             } else {
                 hintMessage = "Try \"${pageWords[currentWordIdx]}\" ($stuckAttempts/3) — tap word to hear!"
+            }
+        }
+    }
+
+    // Automatically start listening in Read Aloud mode
+    LaunchedEffect(pageIndex, readingMode, isPageUnlocked, currentBook?.id) {
+        if (readingMode == "READ_ALONG" && !isPageUnlocked && currentBook != null) {
+            val hasPerm = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (hasPerm) {
+                delay(350)
+                startMic()
+            } else {
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
         }
     }
@@ -251,41 +320,6 @@ fun StoryReaderScreen(
                 tts.shutdown()
             } catch (_: Exception) {
             }
-        }
-    }
-
-    fun flipToPage(delta: Int) {
-        if (delta > 0 && !isPageUnlocked) {
-            Toast.makeText(context, "Read all words aloud to unlock the next page!", Toast.LENGTH_SHORT).show()
-            hintMessage = "🔒 Read all words aloud to unlock the next page!"
-            return
-        }
-        val next = pageIndex + delta
-        if (next !in pages.indices) return
-        stopMic()
-        tts.stop()
-        pageIndex = next
-        val nextWords = StorySpeechMatcher.tokenize(pages[next].text)
-        currentWordIdx = if (next in completedPages) nextWords.size else 0
-        stuckAttempts = 0
-        lastTranscript = ""
-        hintMessage = ""
-    }
-
-    fun finishStory() {
-        val b = currentBook ?: return
-        if (!isPageUnlocked) {
-            Toast.makeText(context, "Read this page aloud to finish the story!", Toast.LENGTH_SHORT).show()
-            return
-        }
-        stopMic()
-        tts.stop()
-        scope.launch {
-            val res = repository.completeStory(b.id, readingMode, b.rewardFamibux)
-            val data = res.getOrNull()
-            awardedFamibux = data?.awardedFamibux ?: b.rewardFamibux
-            alreadyRewardedToday = data?.alreadyRewardedToday ?: false
-            showCompleteDialog = true
         }
     }
 
@@ -439,7 +473,7 @@ fun StoryReaderScreen(
                             }
                         ) {
                             Text(
-                                text = "📖 Flip",
+                                text = "🎧 Read to Me",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (readingMode == "FLIP") Color.White else headerTextColor,
@@ -458,7 +492,7 @@ fun StoryReaderScreen(
                             }
                         ) {
                             Text(
-                                text = "🎤 Read",
+                                text = "🎙️ Read Aloud",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (readingMode == "READ_ALONG") Color.White else headerTextColor,
@@ -654,7 +688,7 @@ fun StoryReaderScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (isListening) "Listening..." else if (isPageUnlocked) "Page Complete ✓" else "Tap Mic & Read",
+                                        text = if (isListening) "🎙️ Listening..." else if (isPageUnlocked) "Page Complete ✓" else "🎙️ Start Mic",
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -673,8 +707,14 @@ fun StoryReaderScreen(
                                         if (currentWordIdx < pageWords.size) {
                                             speakText(pageWords[currentWordIdx], currentBook.language)
                                             currentWordIdx += 1
-                                            if (currentWordIdx >= pageWords.size && pageIndex !in completedPages) {
-                                                completedPages.add(pageIndex)
+                                            if (currentWordIdx >= pageWords.size) {
+                                                if (pageIndex !in completedPages) completedPages.add(pageIndex)
+                                                stopMic()
+                                                hintMessage = if (isLastPage) "🎉 Awesome reading! Finishing story..." else "🎉 Page Complete! Flipping to next page..."
+                                                scope.launch {
+                                                    delay(1200)
+                                                    if (isLastPage) finishStory() else flipToPage(1)
+                                                }
                                             }
                                         }
                                     },
