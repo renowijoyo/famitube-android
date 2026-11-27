@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
@@ -1139,8 +1138,10 @@ private fun AddChildAccountView(
                 val m = parts[1].toIntOrNull()
                 val d = parts[2].toIntOrNull()
                 if (y != null && m != null && d != null && m in 1..12 && d in 1..31) {
-                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-                    cal.set(y, m - 1, d, 0, 0, 0)
+                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                        clear()
+                        set(y, m - 1, d)
+                    }
                     cal.timeInMillis
                 } else System.currentTimeMillis()
             } else System.currentTimeMillis()
@@ -1277,32 +1278,28 @@ private fun AddChildAccountView(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = birthday,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Birthday (Date Picker)") },
-                    placeholder = { Text("Tap to select birthday (YYYY-MM-DD)") },
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
-                        }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { showDatePicker = true }
-                )
-            }
+            OutlinedTextField(
+                value = birthday,
+                onValueChange = {
+                    birthday = it
+                    errorMsg = null
+                    suggestTierFromBirthday(it)?.let { tier -> ageRating = tier }
+                },
+                label = { Text("Birthday (YYYY-MM-DD)") },
+                placeholder = { Text("Tap calendar icon or type YYYY-MM-DD") },
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
             Text(
-                text = "Selecting birthday automatically suggests the recommended age tier below.",
+                text = "Selecting or typing birthday automatically suggests the recommended age tier below.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, top = (-8).dp)
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

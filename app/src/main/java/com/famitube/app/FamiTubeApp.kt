@@ -23,8 +23,8 @@ class FamiTubeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashReporter.init(this)
         preferences = ParentalPreferences(this)
+        CrashReporter.init(this, preferences)
         starPointsManager = StarPointsManager(this, preferences)
         achievementManager = AchievementManager(this, preferences, starPointsManager)
         repository = FamiTubeRepository(preferences, achievementManager, starPointsManager, this)
