@@ -1052,13 +1052,21 @@ class FamiTubeRepository(
     suspend fun getStories(
         ageRating: String? = null,
         language: String? = null,
-        includeAllAges: Boolean = false
+        includeAllAges: Boolean = false,
+        search: String? = null,
+        category: String? = null,
+        page: Int? = null,
+        limit: Int? = null
     ): Result<List<StoryBookDto>> {
         return try {
             val res = api.getStories(
                 ageRating = ageRating,
                 language = language,
-                includeAllAges = if (includeAllAges) true else null
+                includeAllAges = if (includeAllAges) true else null,
+                search = search?.takeIf { it.isNotBlank() },
+                category = category?.takeIf { it.isNotBlank() },
+                page = page,
+                limit = limit
             )
             if (res.success && res.data != null) {
                 Result.success(res.data)

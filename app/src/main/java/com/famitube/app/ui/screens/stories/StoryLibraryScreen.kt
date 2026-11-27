@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +43,7 @@ fun StoryLibraryScreen(
     var isLoading by remember { mutableStateOf(true) }
     var selectedLang by remember { mutableStateOf<String?>(null) }
     var browseAllAges by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val isOlderTier = currentAgeFilter == "OLDER_KIDS" || currentAgeFilter == "ALL"
 
@@ -50,14 +53,15 @@ fun StoryLibraryScreen(
             val res = repository.getStories(
                 ageRating = currentAgeFilter,
                 language = selectedLang,
-                includeAllAges = browseAllAges
+                includeAllAges = browseAllAges,
+                search = searchQuery.trim()
             )
             stories = res.getOrDefault(emptyList())
             isLoading = false
         }
     }
 
-    LaunchedEffect(currentAgeFilter, selectedLang, browseAllAges) {
+    LaunchedEffect(currentAgeFilter, selectedLang, browseAllAges, searchQuery) {
         loadStories()
     }
 
@@ -83,6 +87,41 @@ fun StoryLibraryScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+
+        item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+                placeholder = { Text("Search 300+ stories, animals, titles...", fontSize = 14.sp) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PinkPrimary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
         }
 
         item {

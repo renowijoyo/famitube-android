@@ -288,7 +288,11 @@ interface FamiTubeApiService {
     suspend fun getStories(
         @Query("ageRating") ageRating: String? = null,
         @Query("language") language: String? = null,
-        @Query("includeAllAges") includeAllAges: Boolean? = null
+        @Query("includeAllAges") includeAllAges: Boolean? = null,
+        @Query("search") search: String? = null,
+        @Query("category") category: String? = null,
+        @Query("page") page: Int? = null,
+        @Query("limit") limit: Int? = null
     ): ApiResponse<List<StoryBookDto>>
 
     @GET("stories/{id}")
