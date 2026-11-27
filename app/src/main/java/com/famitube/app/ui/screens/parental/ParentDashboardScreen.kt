@@ -983,7 +983,7 @@ private fun ControlsTab(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    listOf("en" to "English", "id" to "Indonesia", "bilingual" to "Bilingual").forEach { (code, label) ->
+                    listOf("all" to "All", "en" to "English", "id" to "Indonesia", "bilingual" to "Bilingual").forEach { (code, label) ->
                         FilterChip(
                             selected = contentLanguage == code,
                             onClick = { contentLanguage = code },
@@ -1376,7 +1376,7 @@ private fun ChildOverrideDialog(
                     }
                     Text("Language & Culture", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("en" to "EN", "id" to "ID", "bilingual" to "EN+ID").forEach { (code, label) ->
+                        listOf("all" to "All", "en" to "EN", "id" to "ID", "bilingual" to "EN+ID").forEach { (code, label) ->
                             FilterChip(
                                 selected = contentLanguage == code,
                                 onClick = { contentLanguage = code },

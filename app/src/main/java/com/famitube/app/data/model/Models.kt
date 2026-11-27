@@ -134,7 +134,7 @@ data class ParentalSettingsDto(
     @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
     @SerializedName("attentionPauseSeconds") val attentionPauseSeconds: Int = 30,
     @SerializedName("attentionMinWatchPercent") val attentionMinWatchPercent: Int = 70,
-    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("contentLanguage") val contentLanguage: String = "all",
     @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
     @SerializedName("toddlerLoopMinutes") val toddlerLoopMinutes: Int = 15,
     @SerializedName("toddlerCooldownMinutes") val toddlerCooldownMinutes: Int = 30,
@@ -153,7 +153,7 @@ data class ToddlerTvChannelLoopDto(
 )
 
 data class ToddlerTvSettingsDto(
-    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("contentLanguage") val contentLanguage: String = "all",
     @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
     @SerializedName("toddlerLoopMinutes") val toddlerLoopMinutes: Int = 15,
     @SerializedName("toddlerCooldownMinutes") val toddlerCooldownMinutes: Int = 30,
@@ -395,7 +395,7 @@ data class ParentChildDto(
     @SerializedName("parentPin") val parentPin: String = "1234",
     @SerializedName("dailyLimitMinutes") val dailyLimitMinutes: Int = 45,
     @SerializedName("attentionTrackingEnabled") val attentionTrackingEnabled: Boolean = true,
-    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("contentLanguage") val contentLanguage: String = "all",
     @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
     @SerializedName("toddlerLoopMinutes") val toddlerLoopMinutes: Int = 15,
     @SerializedName("toddlerCooldownMinutes") val toddlerCooldownMinutes: Int = 30,
@@ -418,7 +418,7 @@ data class GlobalParentalControlsDto(
     @SerializedName("youtubeSearchEnabled") val youtubeSearchEnabled: Boolean = true,
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
     @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
-    @SerializedName("contentLanguage") val contentLanguage: String = "en",
+    @SerializedName("contentLanguage") val contentLanguage: String = "all",
     @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
     @SerializedName("religion") val religion: String? = null
 )

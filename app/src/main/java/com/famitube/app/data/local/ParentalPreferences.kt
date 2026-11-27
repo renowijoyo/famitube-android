@@ -71,7 +71,7 @@ class ParentalPreferences(context: Context) {
     )
 
     var contentLanguage: String
-        get() = prefs.getString(KEY_CONTENT_LANGUAGE, "en") ?: "en"
+        get() = prefs.getString(KEY_CONTENT_LANGUAGE, "all") ?: "all"
         set(value) = prefs.edit().putString(KEY_CONTENT_LANGUAGE, value.lowercase()).apply()
 
     var cultureMode: String

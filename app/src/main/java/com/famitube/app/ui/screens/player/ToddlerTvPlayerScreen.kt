@@ -1,5 +1,10 @@
 package com.famitube.app.ui.screens.player
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,7 +15,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,11 +26,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.famitube.app.data.local.ParentalPreferences
 import com.famitube.app.data.model.SourceType
 import com.famitube.app.data.model.ToddlerTvChannelLoopDto
@@ -90,6 +102,40 @@ fun ToddlerTvPlayerScreen(
     var elapsedInVideo by remember { mutableIntStateOf(0) }
     var startOffsetForCurrentSlot by remember { mutableIntStateOf(0) }
     var sessionWatchedSeconds by remember { mutableIntStateOf(prefs.toddlerSessionWatchedSeconds) }
+
+    val context = LocalContext.current
+    val activity = remember(context) { context.findToddlerActivity() }
+    var isFullscreen by remember { mutableStateOf(false) }
+    var showRestartDialog by remember { mutableStateOf(false) }
+    var restartKey by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isFullscreen) {
+        val act = activity ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(act.window, act.window.decorView)
+        if (isFullscreen) {
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            activity?.let { act ->
+                act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                WindowCompat.getInsetsController(act.window, act.window.decorView)
+                    .show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
+    BackHandler(enabled = isFullscreen) {
+        isFullscreen = false
+    }
 
     LaunchedEffect(topic) {
         isLoading = true
@@ -221,84 +267,100 @@ fun ToddlerTvPlayerScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "${channelLoop?.emoji ?: channelEmojiForTopic(topic)} ${channelLoop?.displayTitle ?: topic}",
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            color = PinkPrimary.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(99.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
+            if (!isFullscreen) {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${channelLoop?.emoji ?: channelEmojiForTopic(topic)} ${channelLoop?.displayTitle ?: topic}",
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                color = PinkPrimary.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(99.dp)
                             ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = PinkPrimary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Linear TV",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PinkPrimary
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to TV Channels",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        val loopMin = prefs.toddlerLoopMinutes.coerceAtLeast(5)
+                        val watchedMin = (sessionWatchedSeconds / 60).coerceAtMost(loopMin)
+                        Text(
+                            text = "${watchedMin}/${loopMin}m",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFFB8C0FF),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                        if (currentVideo != null && !isCoolingDown && phase == ToddlerTvPhase.PLAYING) {
+                            IconButton(onClick = { showRestartDialog = true }) {
                                 Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = PinkPrimary,
-                                    modifier = Modifier.size(12.dp)
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Restart Video from Beginning",
+                                    tint = Color.White
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Linear TV",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PinkPrimary
+                            }
+                            IconButton(onClick = { isFullscreen = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Fullscreen,
+                                    contentDescription = "Fullscreen",
+                                    tint = Color.White
+                                )
+                            }
+                            val isFav = currentVideo.id in favoriteIds
+                            IconButton(onClick = { repository.toggleFavorite(currentVideo.id) }) {
+                                Icon(
+                                    imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = if (isFav) "Remove Favorite" else "Favorite",
+                                    tint = if (isFav) PinkPrimary else Color.White
                                 )
                             }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back to TV Channels",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    val loopMin = prefs.toddlerLoopMinutes.coerceAtLeast(5)
-                    val watchedMin = (sessionWatchedSeconds / 60).coerceAtMost(loopMin)
-                    Text(
-                        text = "${watchedMin}/${loopMin}m",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFFB8C0FF),
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(end = 6.dp)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = SurfaceDark,
+                        titleContentColor = Color.White
                     )
-                    if (currentVideo != null && !isCoolingDown && phase == ToddlerTvPhase.PLAYING) {
-                        val isFav = currentVideo.id in favoriteIds
-                        IconButton(onClick = { repository.toggleFavorite(currentVideo.id) }) {
-                            Icon(
-                                imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = if (isFav) "Remove Favorite" else "Favorite",
-                                tint = if (isFav) PinkPrimary else Color.White
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SurfaceDark,
-                    titleContentColor = Color.White
                 )
-            )
+            }
         },
         containerColor = Color(0xFF0E101A)
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .then(if (!isFullscreen) Modifier.padding(paddingValues) else Modifier)
                 .background(Color(0xFF0E101A)),
             contentAlignment = Alignment.Center
         ) {
@@ -372,14 +434,13 @@ fun ToddlerTvPlayerScreen(
                 }
 
                 currentVideo != null -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
+                    if (isFullscreen) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
+                                .fillMaxSize()
                                 .background(Color.Black)
                         ) {
-                            key(currentVideo.id, startOffsetForCurrentSlot) {
+                            key(currentVideo.id, startOffsetForCurrentSlot, restartKey) {
                                 if (currentVideo.sourceType == SourceType.YOUTUBE &&
                                     !currentVideo.youtubeVideoId.isNullOrBlank()
                                 ) {
@@ -397,7 +458,7 @@ fun ToddlerTvPlayerScreen(
                                 }
                             }
 
-                            // Scrub-lock shield: prevents toddler from tapping YouTube chrome or seeking
+                            // Scrub-lock shield: prevents toddler from tapping YouTube chrome or seeking ahead
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -407,38 +468,214 @@ fun ToddlerTvPlayerScreen(
                                         onClick = {}
                                     )
                             )
-                        }
 
-                        // Calm bottom info bar (no scrub bar, no skip/next)
-                        Surface(
-                            color = SurfaceDark,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
+                            // Immersive floating top overlay
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color(0xCC000000), Color.Transparent)
+                                        )
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                IconButton(
+                                    onClick = { isFullscreen = false },
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0x88000000))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FullscreenExit,
+                                        contentDescription = "Exit Fullscreen",
+                                        tint = Color.White
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
                                 Text(
                                     text = currentVideo.title,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${currentVideo.channelTitle} • Calm Toddler TV Loop (${currentIndex + 1}/${videos.size})",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFFA5B4FC)
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                IconButton(
+                                    onClick = { showRestartDialog = true },
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0x88000000))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Restart Video",
+                                        tint = Color.White
+                                    )
+                                }
+
+                                val isFav = currentVideo.id in favoriteIds
+                                IconButton(
+                                    onClick = { repository.toggleFavorite(currentVideo.id) },
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0x88000000))
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = if (isFav) "Remove Favorite" else "Favorite",
+                                        tint = if (isFav) PinkPrimary else Color.White
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .background(Color.Black)
+                            ) {
+                                key(currentVideo.id, startOffsetForCurrentSlot, restartKey) {
+                                    if (currentVideo.sourceType == SourceType.YOUTUBE &&
+                                        !currentVideo.youtubeVideoId.isNullOrBlank()
+                                    ) {
+                                        LockedYouTubePlayerComposable(
+                                            videoId = currentVideo.youtubeVideoId,
+                                            startSeconds = startOffsetForCurrentSlot.toFloat(),
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        LockedExoPlayerComposable(
+                                            mediaUrl = currentVideo.sourceUrl,
+                                            startPositionMs = startOffsetForCurrentSlot * 1000L,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+
+                                // Scrub-lock shield: prevents toddler from tapping YouTube chrome or seeking ahead
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {}
+                                        )
                                 )
+                            }
+
+                            // Calm bottom info bar (no scrub bar, no skip ahead)
+                            Surface(
+                                color = SurfaceDark,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = currentVideo.title,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "${currentVideo.channelTitle} • Calm Toddler TV Loop (${currentIndex + 1}/${videos.size})",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = Color(0xFFA5B4FC)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        IconButton(
+                                            onClick = { isFullscreen = true },
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(SurfaceLightDark)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Fullscreen,
+                                                contentDescription = "Fullscreen",
+                                                tint = Color.White
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    OutlinedButton(
+                                        onClick = { showRestartDialog = true },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4CC9F0))
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Restart Video from Beginning", fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    // Toddler Restart Confirmation Dialog
+    if (showRestartDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestartDialog = false },
+            title = { Text("Restart Video?", fontWeight = FontWeight.Bold) },
+            text = { Text("Do you want to play this video again from the beginning?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRestartDialog = false
+                        elapsedInVideo = 0
+                        startOffsetForCurrentSlot = 0
+                        restartKey += 1
+                        prefs.saveToddlerPlayhead(
+                            topic,
+                            ParentalPreferences.ToddlerPlayhead(
+                                index = currentIndex,
+                                elapsedSeconds = 0,
+                                lastLeftAtMs = System.currentTimeMillis()
+                            )
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                ) {
+                    Text("Restart", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestartDialog = false }) {
+                    Text("Keep Watching")
+                }
+            }
+        )
     }
 }
 
@@ -510,4 +747,10 @@ private fun ToddlerBumperCard(
             }
         }
     }
+}
+
+private tailrec fun Context.findToddlerActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findToddlerActivity()
+    else -> null
 }

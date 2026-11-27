@@ -440,7 +440,7 @@ fun ParentalSettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("en" to "English", "id" to "Indonesia", "bilingual" to "Bilingual").forEach { (code, label) ->
+                    listOf("all" to "All", "en" to "English", "id" to "Indonesia", "bilingual" to "Bilingual").forEach { (code, label) ->
                         FilterChip(
                             selected = contentLanguage == code,
                             onClick = {

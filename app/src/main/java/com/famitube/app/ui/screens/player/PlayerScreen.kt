@@ -19,6 +19,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,6 +82,8 @@ fun PlayerScreen(
     var showCreateInPlayer by remember { mutableStateOf(false) }
     var newPlaylistTitle by remember { mutableStateOf("") }
     var toastMessage by remember { mutableStateOf<String?>(null) }
+    var showToddlerRestartDialog by remember { mutableStateOf(false) }
+    var playerRestartKey by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(isToddler) {
         if (isToddler) {
@@ -164,6 +168,15 @@ fun PlayerScreen(
                     },
                     actions = {
                         if (state.video != null && !state.isLimitExceeded) {
+                            if (isToddler) {
+                                IconButton(onClick = { showToddlerRestartDialog = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Restart from Beginning",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
                             IconButton(onClick = { isFullscreen = true }) {
                                 Icon(
                                     imageVector = Icons.Default.Fullscreen,
@@ -203,17 +216,33 @@ fun PlayerScreen(
                                 .fillMaxSize()
                                 .background(Color.Black)
                         ) {
-                            if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
-                                YouTubePlayerComposable(
-                                    videoId = video.youtubeVideoId,
-                                    isPaused = state.isAutoPausedByInattention,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                ExoPlayerComposable(
-                                    mediaUrl = video.sourceUrl,
-                                    isPaused = state.isAutoPausedByInattention,
-                                    modifier = Modifier.fillMaxSize()
+                            key(playerRestartKey) {
+                                if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                                    YouTubePlayerComposable(
+                                        videoId = video.youtubeVideoId,
+                                        isPaused = state.isAutoPausedByInattention,
+                                        controls = !isToddler,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    ExoPlayerComposable(
+                                        mediaUrl = video.sourceUrl,
+                                        isPaused = state.isAutoPausedByInattention,
+                                        useController = !isToddler,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                            // Toddler scrub-lock shield: prevents toddler from skipping ahead
+                            if (isToddler) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {}
+                                        )
                                 )
                             }
                             if (state.isAutoPausedByInattention) {
@@ -223,19 +252,39 @@ fun PlayerScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
-                            IconButton(
-                                onClick = { isFullscreen = false },
+                            Row(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(12.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0x88000000))
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.FullscreenExit,
-                                    contentDescription = "Exit Fullscreen",
-                                    tint = Color.White
-                                )
+                                if (isToddler) {
+                                    IconButton(
+                                        onClick = { showToddlerRestartDialog = true },
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(Color(0x88000000))
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = "Restart Video",
+                                            tint = Color.White
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { isFullscreen = false },
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0x88000000))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FullscreenExit,
+                                        contentDescription = "Exit Fullscreen",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -251,17 +300,33 @@ fun PlayerScreen(
                                     .aspectRatio(16f / 9f)
                                     .background(Color.Black)
                             ) {
-                                if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
-                                    YouTubePlayerComposable(
-                                        videoId = video.youtubeVideoId,
-                                        isPaused = state.isAutoPausedByInattention,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    ExoPlayerComposable(
-                                        mediaUrl = video.sourceUrl,
-                                        isPaused = state.isAutoPausedByInattention,
-                                        modifier = Modifier.fillMaxSize()
+                                key(playerRestartKey) {
+                                    if (video.sourceType == SourceType.YOUTUBE && !video.youtubeVideoId.isNullOrBlank()) {
+                                        YouTubePlayerComposable(
+                                            videoId = video.youtubeVideoId,
+                                            isPaused = state.isAutoPausedByInattention,
+                                            controls = !isToddler,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        ExoPlayerComposable(
+                                            mediaUrl = video.sourceUrl,
+                                            isPaused = state.isAutoPausedByInattention,
+                                            useController = !isToddler,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+                                // Toddler scrub-lock shield: prevents toddler from skipping ahead
+                                if (isToddler) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = {}
+                                            )
                                     )
                                 }
                                 if (state.isAutoPausedByInattention) {
@@ -406,6 +471,20 @@ fun PlayerScreen(
                                             contentDescription = "Favorite",
                                             tint = if (state.isFavorite) PinkPrimary else Color.White
                                         )
+                                    }
+                                }
+
+                                if (isToddler) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    OutlinedButton(
+                                        onClick = { showToddlerRestartDialog = true },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4CC9F0))
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Restart Video from Beginning", fontWeight = FontWeight.Bold)
                                     }
                                 }
 
@@ -577,6 +656,32 @@ fun PlayerScreen(
         )
     }
 
+    // Toddler Restart Confirmation Dialog
+    if (showToddlerRestartDialog) {
+        AlertDialog(
+            onDismissRequest = { showToddlerRestartDialog = false },
+            title = { Text("Restart Video?", fontWeight = FontWeight.Bold) },
+            text = { Text("Do you want to play this video again from the beginning?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showToddlerRestartDialog = false
+                        playerRestartKey += 1
+                        toastMessage = "Video restarted from beginning"
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+                ) {
+                    Text("Restart", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showToddlerRestartDialog = false }) {
+                    Text("Keep Watching")
+                }
+            }
+        )
+    }
+
     LaunchedEffect(toastMessage) {
         toastMessage?.let { msg ->
             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
@@ -589,11 +694,12 @@ fun PlayerScreen(
 fun YouTubePlayerComposable(
     videoId: String,
     isPaused: Boolean = false,
+    controls: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     YouTubeIFramePlayer(
         videoId = videoId,
-        controls = true,
+        controls = controls,
         startSeconds = 0,
         isPaused = isPaused,
         modifier = modifier
@@ -605,6 +711,7 @@ fun YouTubePlayerComposable(
 fun ExoPlayerComposable(
     mediaUrl: String,
     isPaused: Boolean = false,
+    useController: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -631,7 +738,7 @@ fun ExoPlayerComposable(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exoPlayer
-                useController = true
+                this.useController = useController
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
