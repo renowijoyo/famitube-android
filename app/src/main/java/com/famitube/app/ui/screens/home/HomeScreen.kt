@@ -80,7 +80,8 @@ fun HomeScreen(
     onNavigateTab: (String) -> Unit = {},
     onChannelClick: (String) -> Unit = {},
     onToddlerChannelClick: (String) -> Unit = {},
-    onStoryClick: (String) -> Unit = {}
+    onStoryClick: (String) -> Unit = {},
+    onGameClick: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val starBalance by (viewModel.starBalance?.collectAsState() ?: remember { mutableIntStateOf(0) })
@@ -278,7 +279,8 @@ fun HomeScreen(
                         EducationalGamesScreen(
                             currentAgeFilter = ageFilter,
                             starBalance = starBalance,
-                            onAwardStars = { amt, desc -> viewModel.awardGameStars(amt, desc) }
+                            onAwardStars = { amt, desc -> viewModel.awardGameStars(amt, desc) },
+                            onGameClick = onGameClick
                         )
                     }
                 }

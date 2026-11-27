@@ -26,6 +26,9 @@ sealed class Screen(val route: String) {
     object StoryReader : Screen("story_reader/{storyId}") {
         fun createRoute(storyId: String) = "story_reader/$storyId"
     }
+    object GamePlayer : Screen("game_player/{gameId}") {
+        fun createRoute(gameId: String) = "game_player/$gameId"
+    }
     object ParentalGate : Screen("parental_gate")
     object ParentalSettings : Screen("parental_settings")
     object ParentDashboard : Screen("parent_dashboard")

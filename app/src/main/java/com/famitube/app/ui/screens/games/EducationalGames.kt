@@ -1,5 +1,6 @@
 package com.famitube.app.ui.screens.games
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -12,12 +13,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.famitube.app.ui.theme.*
@@ -38,11 +45,354 @@ enum class GameAgeGroup(val label: String, val ageRange: String) {
     OLDER_KIDS("🚀 Older Kids", "Ages 9–12")
 }
 
+data class GameItem(
+    val id: String,
+    val title: String,
+    val category: String,
+    val ageGroup: GameAgeGroup,
+    val emoji: String,
+    val rewardStars: Int,
+    val description: String,
+    val isH5P: Boolean = false,
+    val h5pContentId: String? = null
+)
+
+object GameCatalog {
+    val ALL_GAMES = listOf(
+        // Toddler Games (Ages 2-4)
+        GameItem(
+            id = "toddler-animal-sounds",
+            title = "Animal Sounds & Calls",
+            category = "Audio & Animals",
+            ageGroup = GameAgeGroup.TODDLER,
+            emoji = "🦁",
+            rewardStars = 10,
+            description = "Listen to animal roars, quacks, and sounds to match the happy animal!"
+        ),
+        GameItem(
+            id = "toddler-balloon-pop",
+            title = "Balloon Pop Counting",
+            category = "Numbers & Focus",
+            ageGroup = GameAgeGroup.TODDLER,
+            emoji = "🎈",
+            rewardStars = 10,
+            description = "Pop floating rainbow balloons in order from 1 to 5 to build early counting!"
+        ),
+        GameItem(
+            id = "toddler-shape-sorter",
+            title = "Shape & Color Sorter",
+            category = "Shapes & Colors",
+            ageGroup = GameAgeGroup.TODDLER,
+            emoji = "🎨",
+            rewardStars = 10,
+            description = "Fit circles, squares, and stars into matching outlines."
+        ),
+        GameItem(
+            id = "toddler-h5p-animals",
+            title = "Farm Match Interactive",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.TODDLER,
+            emoji = "📦",
+            rewardStars = 15,
+            description = "Interactive H5P touch quest pairing farm animal sounds and illustrations.",
+            isH5P = true,
+            h5pContentId = "toddler-animals"
+        ),
+        GameItem(
+            id = "toddler-h5p-memory",
+            title = "Animal Memory Quest",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.TODDLER,
+            emoji = "🃏",
+            rewardStars = 15,
+            description = "Gentle card-flip memory match for toddlers with friendly animal cards.",
+            isH5P = true,
+            h5pContentId = "toddler-memory"
+        ),
+
+        // Young Kids Games (Ages 5-8)
+        GameItem(
+            id = "young-math-sprint",
+            title = "Mental Math Sprint",
+            category = "Math & Speed",
+            ageGroup = GameAgeGroup.YOUNG_KIDS,
+            emoji = "⚡",
+            rewardStars = 10,
+            description = "Fast-paced addition and subtraction sprint to boost arithmetic reflexes!"
+        ),
+        GameItem(
+            id = "young-memory-match",
+            title = "Memory Match Pairs",
+            category = "Memory & Focus",
+            ageGroup = GameAgeGroup.YOUNG_KIDS,
+            emoji = "🃏",
+            rewardStars = 15,
+            description = "Flip and match 4 pairs of cosmic rockets, lions, dolphins, and art palettes!"
+        ),
+        GameItem(
+            id = "young-spelling-quest",
+            title = "Spelling & Phonics Quest",
+            category = "Reading & Phonics",
+            ageGroup = GameAgeGroup.YOUNG_KIDS,
+            emoji = "🔤",
+            rewardStars = 10,
+            description = "Fill in the missing letter to complete words with clues and hints!"
+        ),
+        GameItem(
+            id = "young-h5p-speed-math",
+            title = "Speed Math Challenge",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.YOUNG_KIDS,
+            emoji = "📦",
+            rewardStars = 15,
+            description = "Interactive arithmetic challenge powered by H5P question sets.",
+            isH5P = true,
+            h5pContentId = "young-speed-math"
+        ),
+        GameItem(
+            id = "young-h5p-phonics",
+            title = "Phonics Sound Cards",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.YOUNG_KIDS,
+            emoji = "📦",
+            rewardStars = 15,
+            description = "Tap and listen to word sounds with pronunciation practice.",
+            isH5P = true,
+            h5pContentId = "young-phonics"
+        ),
+        GameItem(
+            id = "young-h5p-cloze",
+            title = "Word Cloze Sentences",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.YOUNG_KIDS,
+            emoji = "📦",
+            rewardStars = 15,
+            description = "Drag words into blanks to complete interesting story passages.",
+            isH5P = true,
+            h5pContentId = "young-drag-cloze"
+        ),
+
+        // Older Kids Games (Ages 9-12)
+        GameItem(
+            id = "older-science-trivia",
+            title = "Cosmic Science Trivia",
+            category = "Science & Space",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "🧠",
+            rewardStars = 10,
+            description = "Test science knowledge on astronomy, biology, and Earth sciences with fun facts!"
+        ),
+        GameItem(
+            id = "older-world-explorer",
+            title = "World Geography Explorer",
+            category = "Geography & World",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "🌍",
+            rewardStars = 10,
+            description = "Identify countries, national flags, capital cities, and famous world rivers!"
+        ),
+        GameItem(
+            id = "older-orbit-physics",
+            title = "Orbital Physics Simulator",
+            category = "Physics & Space",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "🌌",
+            rewardStars = 15,
+            description = "Simulate planetary gravity, adjust orbital speed, and launch satellites into orbit!"
+        ),
+        GameItem(
+            id = "older-logic-lab",
+            title = "Logic Lab Patterns",
+            category = "Logic & Puzzles",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "💡",
+            rewardStars = 15,
+            description = "Deduce grid sequences, solve pattern puzzles, and unlock brain badges!"
+        ),
+        GameItem(
+            id = "older-h5p-universe-cloze",
+            title = "Deep Space Cloze Reading",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "📦",
+            rewardStars = 20,
+            description = "Interactive deep space astronomy reading challenge with fill-in-the-blank clues.",
+            isH5P = true,
+            h5pContentId = "older-universe-cloze"
+        ),
+        GameItem(
+            id = "older-h5p-multiplication",
+            title = "Multiplication Mastery",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "📦",
+            rewardStars = 20,
+            description = "Interactive multiplication drills and rapid math problem sets.",
+            isH5P = true,
+            h5pContentId = "older-math-mult"
+        ),
+        GameItem(
+            id = "older-h5p-space-memory",
+            title = "Cosmic Memory Challenge",
+            category = "H5P Interactive",
+            ageGroup = GameAgeGroup.OLDER_KIDS,
+            emoji = "📦",
+            rewardStars = 20,
+            description = "Memory match with nebula, planet, and galaxy telescope imagery.",
+            isH5P = true,
+            h5pContentId = "older-space-memory"
+        )
+    )
+
+    fun getGameById(id: String): GameItem? = ALL_GAMES.find { it.id == id }
+
+    fun getGamesForAge(ageGroup: GameAgeGroup, browseAll: Boolean = false): List<GameItem> {
+        return if (browseAll) ALL_GAMES else ALL_GAMES.filter { it.ageGroup == ageGroup }
+    }
+}
+
+@Composable
+fun GameShelfCard(
+    game: GameItem,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 96.dp, height = 80.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF1E293B),
+                                if (game.isH5P) Color(0xFF0F3E4D) else Color(0xFF2A1B3D)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = game.emoji,
+                    fontSize = 36.sp
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xCC000000))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "⭐ +${game.rewardStars}",
+                        color = Color(0xFFFFD166),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = game.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(CyanAccent.copy(alpha = 0.15f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = game.category,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CyanAccent
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(PinkPrimary.copy(alpha = 0.12f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = game.ageGroup.label,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PinkPrimary
+                        )
+                    }
+                }
+
+                Text(
+                    text = game.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            FilledTonalButton(
+                onClick = onClick,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = PinkPrimary,
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Play",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun EducationalGamesScreen(
     currentAgeFilter: String,
     starBalance: Int,
     onAwardStars: (Int, String) -> Unit,
+    onGameClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val activeAgeGroup = when (currentAgeFilter.uppercase()) {
@@ -51,20 +401,46 @@ fun EducationalGamesScreen(
         else -> GameAgeGroup.OLDER_KIDS
     }
 
-    var selectedGameIndex by remember { mutableIntStateOf(0) }
+    var selectedGameId by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var browseAllAges by remember { mutableStateOf(false) }
 
-    // Reset game index when parent changes age filter
-    LaunchedEffect(activeAgeGroup) {
-        selectedGameIndex = 0
+    // If internal full-screen player is active (fallback when onGameClick is null or in-place)
+    if (onGameClick == null && selectedGameId != null) {
+        BackHandler { selectedGameId = null }
+        GamePlayerScreen(
+            gameId = selectedGameId ?: "",
+            currentAgeFilter = currentAgeFilter,
+            starBalance = starBalance,
+            onAwardStars = onAwardStars,
+            onBackClick = { selectedGameId = null }
+        )
+        return
+    }
+
+    val baseGames = remember(activeAgeGroup, browseAllAges) {
+        GameCatalog.getGamesForAge(activeAgeGroup, browseAllAges)
+    }
+
+    val filteredGames = remember(baseGames, searchQuery, selectedCategory) {
+        baseGames.filter { game ->
+            val matchesCategory = selectedCategory == null || game.category.contains(selectedCategory!!, ignoreCase = true)
+            val matchesSearch = searchQuery.isBlank() ||
+                game.title.contains(searchQuery, ignoreCase = true) ||
+                game.description.contains(searchQuery, ignoreCase = true) ||
+                game.category.contains(searchQuery, ignoreCase = true)
+            matchesCategory && matchesSearch
+        }
     }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Reward & Motivation Hero Banner (locked to child's assigned age tier)
+        // 1. Reward & Motivation Hero Banner
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -107,7 +483,7 @@ fun EducationalGamesScreen(
                         }
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = "Play free educational games, solve puzzles & earn ⭐ stars!",
+                            text = "Choose a quest below for full-screen fun, puzzle solving & ⭐ star rewards!",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -131,85 +507,284 @@ fun EducationalGamesScreen(
             }
         }
 
-        // 2. Games Tabs for Child's Profile Age Group (Native + H5P Interactive)
+        // 2. Search Field (Just like stories)
         item {
-            val gamesForGroup = when (activeAgeGroup) {
-                GameAgeGroup.TODDLER -> listOf(
-                    "🦁 Animal Sounds", "🎈 Balloon Pop", "🎨 Shape Sorter",
-                    "📦 H5P Farm Match", "📦 H5P Animal Memory"
-                )
-                GameAgeGroup.YOUNG_KIDS -> listOf(
-                    "⚡ Math Sprint", "🃏 Memory Match", "🔤 Spelling Quest",
-                    "📦 H5P Speed Math", "📦 H5P Phonics Cards", "📦 H5P Word Cloze"
-                )
-                GameAgeGroup.OLDER_KIDS -> listOf(
-                    "🧠 Science Trivia", "🌍 World Explorer", "🌌 Orbit Physics", "💡 Logic Lab",
-                    "📦 H5P Space Cloze", "📦 H5P Multiplication", "📦 H5P Cosmic Memory"
-                )
-            }
-
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                itemsIndexed(gamesForGroup) { index, title ->
-                    val isSelected = selectedGameIndex == index
-                    val isH5p = title.startsWith("📦")
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isSelected) CyanAccent 
-                                else if (isH5p) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                                else MaterialTheme.colorScheme.surfaceVariant
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+                placeholder = { Text("Search games, math, science, puzzles...", fontSize = 14.sp) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            .border(
-                                width = if (isH5p && !isSelected) 1.dp else 0.dp,
-                                color = if (isH5p && !isSelected) CyanAccent.copy(alpha = 0.35f) else Color.Transparent,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { selectedGameIndex = index }
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = title,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface
-                        )
+                        }
                     }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PinkPrimary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+        }
+
+        // 3. Category Filter Chips & All Ages toggle (Just like stories)
+        item {
+            val categories = listOf(
+                null to "All Quests",
+                "Math" to "⚡ Math",
+                "Audio" to "🦁 Animals",
+                "Science" to "🧠 Science",
+                "World" to "🌍 World",
+                "H5P" to "📦 H5P Interactive"
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(categories) { (catKey, label) ->
+                    FilterChip(
+                        selected = selectedCategory == catKey,
+                        onClick = { selectedCategory = if (selectedCategory == catKey) null else catKey },
+                        label = { Text(label, fontWeight = FontWeight.SemiBold) }
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = browseAllAges,
+                        onClick = { browseAllAges = !browseAllAges },
+                        label = {
+                            Text(
+                                text = if (browseAllAges) "All Ages" else "Browse All",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    )
                 }
             }
         }
 
-        // 3. Active Game Area
-        item {
-            when (activeAgeGroup) {
-                GameAgeGroup.TODDLER -> {
-                    when (selectedGameIndex) {
-                        0 -> ToddlerAnimalMatchGame(onAwardStars = onAwardStars)
-                        1 -> ToddlerBalloonPopGame(onAwardStars = onAwardStars)
-                        2 -> ToddlerShapeSorterGame(onAwardStars = onAwardStars)
-                        3 -> H5PActivityViewer(contentId = "toddler-animals", onAwardStars = onAwardStars)
-                        else -> H5PActivityViewer(contentId = "toddler-memory", onAwardStars = onAwardStars)
+        // 4. Downward List of Game Cards (Just like stories)
+        if (filteredGames.isEmpty()) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "No Games Found",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Try clearing your search query or picking another category.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
-                GameAgeGroup.YOUNG_KIDS -> {
-                    when (selectedGameIndex) {
-                        0 -> YoungKidsMathSprintGame(onAwardStars = onAwardStars)
-                        1 -> YoungKidsMemoryMatchGame(onAwardStars = onAwardStars)
-                        2 -> YoungKidsSpellingQuestGame(onAwardStars = onAwardStars)
-                        3 -> H5PActivityViewer(contentId = "young-speed-math", onAwardStars = onAwardStars)
-                        4 -> H5PActivityViewer(contentId = "young-phonics", onAwardStars = onAwardStars)
-                        else -> H5PActivityViewer(contentId = "young-drag-cloze", onAwardStars = onAwardStars)
+            }
+        } else {
+            items(filteredGames, key = { it.id }) { game ->
+                GameShelfCard(
+                    game = game,
+                    onClick = {
+                        if (onGameClick != null) {
+                            onGameClick(game.id)
+                        } else {
+                            selectedGameId = game.id
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GamePlayerScreen(
+    gameId: String,
+    currentAgeFilter: String,
+    starBalance: Int,
+    onAwardStars: (Int, String) -> Unit,
+    onBackClick: () -> Unit
+) {
+    val game = GameCatalog.getGameById(gameId)
+        ?: GameCatalog.ALL_GAMES.firstOrNull()
+        ?: return
+
+    var gameKey by remember { mutableIntStateOf(0) }
+
+    val isDark = MaterialTheme.colorScheme.background != BackgroundLight
+    val screenBg = if (isDark) Color(0xFF080C14) else BackgroundLight
+    val headerSurface = if (isDark) Color(0xEE0F172A) else Color(0xF2FFFFFF)
+    val headerBorder = if (isDark) Color(0x33FFFFFF) else Color(0x1F0F172A)
+    val textColor = if (isDark) Color.White else TextPrimaryLight
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(screenBg)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Floating Top Header Bar
+            Surface(
+                color = headerSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = headerBorder,
+                        shape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
+                    ),
+                shape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp),
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isDark) Color(0x33FFFFFF) else Color(0x14000000))
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to Games",
+                                tint = textColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "${game.emoji} ${game.title}",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 15.sp,
+                                    color = textColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = "${game.category} • ${game.ageGroup.label}",
+                                fontSize = 11.sp,
+                                color = if (isDark) Color(0xFF94A3B8) else TextSecondaryLight,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF2C2408))
+                                .border(1.2.dp, Color(0xFFFFD166), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "⭐ $starBalance",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFFFD166),
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { gameKey += 1 },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isDark) Color(0x33FFFFFF) else Color(0x14000000))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Restart Game",
+                                tint = textColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
-                GameAgeGroup.OLDER_KIDS -> {
-                    when (selectedGameIndex) {
-                        0 -> OlderKidsScienceTriviaGame(onAwardStars = onAwardStars)
-                        1 -> OlderKidsWorldExplorerGame(onAwardStars = onAwardStars)
-                        2 -> OlderKidsOrbitPhysicsGame(onAwardStars = onAwardStars)
-                        3 -> OlderKidsLogicLabGame(onAwardStars = onAwardStars)
-                        4 -> H5PActivityViewer(contentId = "older-universe-cloze", onAwardStars = onAwardStars)
-                        5 -> H5PActivityViewer(contentId = "older-math-mult", onAwardStars = onAwardStars)
-                        else -> H5PActivityViewer(contentId = "older-space-memory", onAwardStars = onAwardStars)
+            }
+
+            // Full Screen Immersive Interactive Game Canvas
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+                    .padding(14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                key(gameKey) {
+                    if (game.isH5P && game.h5pContentId != null) {
+                        H5PActivityViewer(
+                            contentId = game.h5pContentId,
+                            onAwardStars = onAwardStars,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when (game.id) {
+                                "toddler-animal-sounds" -> ToddlerAnimalMatchGame(onAwardStars = onAwardStars)
+                                "toddler-balloon-pop" -> ToddlerBalloonPopGame(onAwardStars = onAwardStars)
+                                "toddler-shape-sorter" -> ToddlerShapeSorterGame(onAwardStars = onAwardStars)
+                                "young-math-sprint" -> YoungKidsMathSprintGame(onAwardStars = onAwardStars)
+                                "young-memory-match" -> YoungKidsMemoryMatchGame(onAwardStars = onAwardStars)
+                                "young-spelling-quest" -> YoungKidsSpellingQuestGame(onAwardStars = onAwardStars)
+                                "older-science-trivia" -> OlderKidsScienceTriviaGame(onAwardStars = onAwardStars)
+                                "older-world-explorer" -> OlderKidsWorldExplorerGame(onAwardStars = onAwardStars)
+                                "older-orbit-physics" -> OlderKidsOrbitPhysicsGame(onAwardStars = onAwardStars)
+                                "older-logic-lab" -> OlderKidsLogicLabGame(onAwardStars = onAwardStars)
+                                else -> ToddlerAnimalMatchGame(onAwardStars = onAwardStars)
+                            }
+                        }
                     }
                 }
             }

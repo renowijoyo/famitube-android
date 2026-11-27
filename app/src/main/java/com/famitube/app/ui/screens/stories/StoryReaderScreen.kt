@@ -8,6 +8,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -94,11 +95,36 @@ fun StoryReaderScreen(
         }
     }
 
+    fun selectBestTtsVoice(ttsInstance: TextToSpeech, locale: Locale) {
+        try {
+            val voices = ttsInstance.voices ?: return
+            val matching = voices.filter {
+                it.locale.language.equals(locale.language, ignoreCase = true)
+            }
+            if (matching.isEmpty()) return
+            val bestVoice = matching.maxByOrNull { voice ->
+                var score = voice.quality * 10
+                val name = voice.name.lowercase()
+                if (name.contains("natural") || name.contains("neural")) score += 60
+                if (name.contains("network")) score += 30
+                if (name.contains("google")) score += 30
+                if (name.contains("female") || name.contains("warm")) score += 20
+                if (!voice.isNetworkConnectionRequired) score += 10
+                score
+            }
+            if (bestVoice != null) {
+                ttsInstance.voice = bestVoice
+            }
+        } catch (_: Exception) {}
+    }
+
     fun speakText(text: String, lang: String) {
         if (!ttsReady || text.isBlank()) return
         val locale = if (lang == "id") Locale("id", "ID") else Locale.US
         tts.language = locale
-        tts.setSpeechRate(0.88f)
+        selectBestTtsVoice(tts, locale)
+        tts.setPitch(1.08f)
+        tts.setSpeechRate(0.92f)
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "story_${System.currentTimeMillis()}")
     }
 

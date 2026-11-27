@@ -49,6 +49,7 @@ import com.famitube.app.ui.screens.playlists.PlaylistsScreen
 import com.famitube.app.ui.screens.profile.ProfileScreen
 import com.famitube.app.ui.screens.search.SearchScreen
 import com.famitube.app.ui.screens.stories.StoryReaderScreen
+import com.famitube.app.ui.screens.games.GamePlayerScreen
 
 @Composable
 fun FamiTubeNavGraph(
@@ -59,8 +60,9 @@ fun FamiTubeNavGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Keep bottom bar always visible at all times (except login screen)
-    val showBottomBar = currentRoute != null && currentRoute != Screen.Login.route
+    // Keep bottom bar always visible at all times (except login screen, story reading & full-screen games)
+    val isFullScreenImmersion = currentRoute?.startsWith("story_reader") == true || currentRoute?.startsWith("game_player") == true
+    val showBottomBar = currentRoute != null && currentRoute != Screen.Login.route && !isFullScreenImmersion
 
     var unlockedBanner by remember { mutableStateOf<Achievement?>(null) }
     var unreadNotifications by remember { mutableStateOf(0) }
@@ -117,7 +119,8 @@ fun FamiTubeNavGraph(
                             Screen.Favorites.route,
                             Screen.Player.route,
                             Screen.ChannelDetail.route,
-                            Screen.StoryReader.route
+                            Screen.StoryReader.route,
+                            Screen.GamePlayer.route
                         ))
                 FamiTubeBottomBar(
                     currentRoute = currentRoute,
@@ -203,6 +206,9 @@ fun FamiTubeNavGraph(
                     },
                     onStoryClick = { storyId ->
                         navController.navigate(Screen.StoryReader.createRoute(storyId))
+                    },
+                    onGameClick = { gameId ->
+                        navController.navigate(Screen.GamePlayer.createRoute(gameId))
                     },
                     onNavigateToBadges = {
                         navController.navigate(Screen.Achievements.route) {
@@ -332,6 +338,23 @@ fun FamiTubeNavGraph(
                 StoryReaderScreen(
                     repository = repository,
                     storyId = storyId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.GamePlayer.route,
+                arguments = listOf(navArgument("gameId") { type = NavType.StringType })
+            ) { backStack ->
+                val gameId = backStack.arguments?.getString("gameId") ?: ""
+                val starBalance = repository.getStarBalance()
+                GamePlayerScreen(
+                    gameId = gameId,
+                    currentAgeFilter = ageFilter,
+                    starBalance = starBalance,
+                    onAwardStars = { amt, desc ->
+                        repository.awardStars(amt, com.famitube.app.data.model.StarSource.ACHIEVEMENT, desc)
+                    },
                     onBackClick = { navController.popBackStack() }
                 )
             }
