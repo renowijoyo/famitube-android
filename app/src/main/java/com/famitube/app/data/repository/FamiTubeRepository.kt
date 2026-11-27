@@ -487,6 +487,8 @@ class FamiTubeRepository(
 
     fun getStarPointsManager(): StarPointsManager? = starPointsManager
 
+    fun getStarBalance(): Int = starPointsManager?.getBalance() ?: 0
+
     fun awardStars(amount: Int, source: StarSource, description: String): Int {
         val updated = starPointsManager?.awardStars(amount, source, description) ?: 0
         if (amount > 0 && isLoggedIn()) {
