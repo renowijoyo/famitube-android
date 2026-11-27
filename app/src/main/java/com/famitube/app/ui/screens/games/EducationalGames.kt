@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,6 +40,37 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.famitube.app.ui.theme.*
 
+object GameCategories {
+    const val ANIMALS = "Animals & Nature"
+    const val MATH = "Math & Numbers"
+    const val SHAPES = "Shapes & Colors"
+    const val READING = "Reading & Phonics"
+    const val LOGIC = "Memory & Logic"
+    const val SCIENCE = "Science & Space"
+    const val WORLD = "World & Geography"
+
+    val ALL = listOf(
+        ANIMALS to "🦁",
+        MATH to "⚡",
+        SCIENCE to "🧠",
+        READING to "🔤",
+        LOGIC to "💡",
+        SHAPES to "🎨",
+        WORLD to "🌍"
+    )
+
+    fun emojiFor(category: String): String = when (category) {
+        ANIMALS -> "🦁"
+        MATH -> "⚡"
+        SCIENCE -> "🧠"
+        READING -> "🔤"
+        LOGIC -> "💡"
+        SHAPES -> "🎨"
+        WORLD -> "🌍"
+        else -> "🎮"
+    }
+}
+
 enum class GameAgeGroup(val label: String, val ageRange: String) {
     TODDLER("🧸 Toddlers", "Ages 2–4"),
     YOUNG_KIDS("🎒 Young Kids", "Ages 5–8"),
@@ -63,7 +95,7 @@ object GameCatalog {
         GameItem(
             id = "toddler-animal-sounds",
             title = "Animal Sounds & Calls",
-            category = "Audio & Animals",
+            category = GameCategories.ANIMALS,
             ageGroup = GameAgeGroup.TODDLER,
             emoji = "🦁",
             rewardStars = 10,
@@ -72,7 +104,7 @@ object GameCatalog {
         GameItem(
             id = "toddler-balloon-pop",
             title = "Balloon Pop Counting",
-            category = "Numbers & Focus",
+            category = GameCategories.MATH,
             ageGroup = GameAgeGroup.TODDLER,
             emoji = "🎈",
             rewardStars = 10,
@@ -81,7 +113,7 @@ object GameCatalog {
         GameItem(
             id = "toddler-shape-sorter",
             title = "Shape & Color Sorter",
-            category = "Shapes & Colors",
+            category = GameCategories.SHAPES,
             ageGroup = GameAgeGroup.TODDLER,
             emoji = "🎨",
             rewardStars = 10,
@@ -90,7 +122,7 @@ object GameCatalog {
         GameItem(
             id = "toddler-h5p-animals",
             title = "Farm Match Interactive",
-            category = "H5P Interactive",
+            category = GameCategories.ANIMALS,
             ageGroup = GameAgeGroup.TODDLER,
             emoji = "📦",
             rewardStars = 15,
@@ -101,7 +133,7 @@ object GameCatalog {
         GameItem(
             id = "toddler-h5p-memory",
             title = "Animal Memory Quest",
-            category = "H5P Interactive",
+            category = GameCategories.LOGIC,
             ageGroup = GameAgeGroup.TODDLER,
             emoji = "🃏",
             rewardStars = 15,
@@ -114,7 +146,7 @@ object GameCatalog {
         GameItem(
             id = "young-math-sprint",
             title = "Mental Math Sprint",
-            category = "Math & Speed",
+            category = GameCategories.MATH,
             ageGroup = GameAgeGroup.YOUNG_KIDS,
             emoji = "⚡",
             rewardStars = 10,
@@ -123,7 +155,7 @@ object GameCatalog {
         GameItem(
             id = "young-memory-match",
             title = "Memory Match Pairs",
-            category = "Memory & Focus",
+            category = GameCategories.LOGIC,
             ageGroup = GameAgeGroup.YOUNG_KIDS,
             emoji = "🃏",
             rewardStars = 15,
@@ -132,7 +164,7 @@ object GameCatalog {
         GameItem(
             id = "young-spelling-quest",
             title = "Spelling & Phonics Quest",
-            category = "Reading & Phonics",
+            category = GameCategories.READING,
             ageGroup = GameAgeGroup.YOUNG_KIDS,
             emoji = "🔤",
             rewardStars = 10,
@@ -141,7 +173,7 @@ object GameCatalog {
         GameItem(
             id = "young-h5p-speed-math",
             title = "Speed Math Challenge",
-            category = "H5P Interactive",
+            category = GameCategories.MATH,
             ageGroup = GameAgeGroup.YOUNG_KIDS,
             emoji = "📦",
             rewardStars = 15,
@@ -152,7 +184,7 @@ object GameCatalog {
         GameItem(
             id = "young-h5p-phonics",
             title = "Phonics Sound Cards",
-            category = "H5P Interactive",
+            category = GameCategories.READING,
             ageGroup = GameAgeGroup.YOUNG_KIDS,
             emoji = "📦",
             rewardStars = 15,
@@ -163,7 +195,7 @@ object GameCatalog {
         GameItem(
             id = "young-h5p-cloze",
             title = "Word Cloze Sentences",
-            category = "H5P Interactive",
+            category = GameCategories.READING,
             ageGroup = GameAgeGroup.YOUNG_KIDS,
             emoji = "📦",
             rewardStars = 15,
@@ -176,7 +208,7 @@ object GameCatalog {
         GameItem(
             id = "older-science-trivia",
             title = "Cosmic Science Trivia",
-            category = "Science & Space",
+            category = GameCategories.SCIENCE,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "🧠",
             rewardStars = 10,
@@ -185,7 +217,7 @@ object GameCatalog {
         GameItem(
             id = "older-world-explorer",
             title = "World Geography Explorer",
-            category = "Geography & World",
+            category = GameCategories.WORLD,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "🌍",
             rewardStars = 10,
@@ -194,7 +226,7 @@ object GameCatalog {
         GameItem(
             id = "older-orbit-physics",
             title = "Orbital Physics Simulator",
-            category = "Physics & Space",
+            category = GameCategories.SCIENCE,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "🌌",
             rewardStars = 15,
@@ -203,7 +235,7 @@ object GameCatalog {
         GameItem(
             id = "older-logic-lab",
             title = "Logic Lab Patterns",
-            category = "Logic & Puzzles",
+            category = GameCategories.LOGIC,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "💡",
             rewardStars = 15,
@@ -212,7 +244,7 @@ object GameCatalog {
         GameItem(
             id = "older-h5p-universe-cloze",
             title = "Deep Space Cloze Reading",
-            category = "H5P Interactive",
+            category = GameCategories.SCIENCE,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "📦",
             rewardStars = 20,
@@ -223,7 +255,7 @@ object GameCatalog {
         GameItem(
             id = "older-h5p-multiplication",
             title = "Multiplication Mastery",
-            category = "H5P Interactive",
+            category = GameCategories.MATH,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "📦",
             rewardStars = 20,
@@ -234,7 +266,7 @@ object GameCatalog {
         GameItem(
             id = "older-h5p-space-memory",
             title = "Cosmic Memory Challenge",
-            category = "H5P Interactive",
+            category = GameCategories.SCIENCE,
             ageGroup = GameAgeGroup.OLDER_KIDS,
             emoji = "📦",
             rewardStars = 20,
@@ -423,9 +455,15 @@ fun EducationalGamesScreen(
         GameCatalog.getGamesForAge(activeAgeGroup, browseAllAges)
     }
 
+    val availableCategories = remember(baseGames) {
+        GameCategories.ALL.filter { (catName, _) ->
+            baseGames.any { it.category == catName }
+        }
+    }
+
     val filteredGames = remember(baseGames, searchQuery, selectedCategory) {
         baseGames.filter { game ->
-            val matchesCategory = selectedCategory == null || game.category.contains(selectedCategory!!, ignoreCase = true)
+            val matchesCategory = selectedCategory == null || game.category.equals(selectedCategory, ignoreCase = true)
             val matchesSearch = searchQuery.isBlank() ||
                 game.title.contains(searchQuery, ignoreCase = true) ||
                 game.description.contains(searchQuery, ignoreCase = true) ||
@@ -507,7 +545,7 @@ fun EducationalGamesScreen(
             }
         }
 
-        // 2. Search Field (Just like stories)
+        // 2. Search Field
         item {
             OutlinedTextField(
                 value = searchQuery,
@@ -543,22 +581,21 @@ fun EducationalGamesScreen(
             )
         }
 
-        // 3. Category Filter Chips & All Ages toggle (Just like stories)
+        // 3. Category Filter Chips & All Ages toggle (Similar to Video Selection)
         item {
-            val categories = listOf(
-                null to "All Quests",
-                "Math" to "⚡ Math",
-                "Audio" to "🦁 Animals",
-                "Science" to "🧠 Science",
-                "World" to "🌍 World",
-                "H5P" to "📦 H5P Interactive"
-            )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(categories) { (catKey, label) ->
+                item {
                     FilterChip(
-                        selected = selectedCategory == catKey,
-                        onClick = { selectedCategory = if (selectedCategory == catKey) null else catKey },
-                        label = { Text(label, fontWeight = FontWeight.SemiBold) }
+                        selected = selectedCategory == null,
+                        onClick = { selectedCategory = null },
+                        label = { Text("All Categories", fontWeight = FontWeight.SemiBold) }
+                    )
+                }
+                items(availableCategories) { (catName, emoji) ->
+                    FilterChip(
+                        selected = selectedCategory == catName,
+                        onClick = { selectedCategory = if (selectedCategory == catName) null else catName },
+                        label = { Text("$emoji $catName", fontWeight = FontWeight.SemiBold) }
                     )
                 }
                 item {
@@ -576,46 +613,200 @@ fun EducationalGamesScreen(
             }
         }
 
-        // 4. Downward List of Game Cards (Just like stories)
-        if (filteredGames.isEmpty()) {
+        // 4. Categorized Games Selection
+        if (selectedCategory != null) {
+            // Category drill-down view (just like video topic selection!)
             item {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    Button(
+                        onClick = { selectedCategory = null },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text(
-                            text = "No Games Found",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "All Categories",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Text(
-                            text = "Try clearing your search query or picking another category.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("All Categories", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${GameCategories.emojiFor(selectedCategory!!)} $selectedCategory (${filteredGames.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
+
+            if (filteredGames.isEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(28.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("No quests found in this category.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            } else {
+                items(filteredGames, key = { it.id }) { game ->
+                    GameShelfCard(
+                        game = game,
+                        onClick = {
+                            if (onGameClick != null) onGameClick(game.id)
+                            else selectedGameId = game.id
+                        }
+                    )
+                }
+            }
+        } else if (searchQuery.isNotBlank()) {
+            // Search Results
+            item {
+                Text(
+                    text = "Search Results (${filteredGames.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            if (filteredGames.isEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(28.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("No quests match \"$searchQuery\"", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            } else {
+                items(filteredGames, key = { it.id }) { game ->
+                    GameShelfCard(
+                        game = game,
+                        onClick = {
+                            if (onGameClick != null) onGameClick(game.id)
+                            else selectedGameId = game.id
+                        }
+                    )
                 }
             }
         } else {
-            items(filteredGames, key = { it.id }) { game ->
-                GameShelfCard(
-                    game = game,
-                    onClick = {
-                        if (onGameClick != null) {
-                            onGameClick(game.id)
-                        } else {
-                            selectedGameId = game.id
+            // All Categories view: Topic tiles + Games grouped inside each category
+            item {
+                Text(
+                    text = "Pick a Category 🎯",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+
+            val rows = availableCategories.chunked(2)
+            items(rows.size) { rowIndex ->
+                val pair = rows[rowIndex]
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    pair.forEach { (catName, emoji) ->
+                        val count = baseGames.count { it.category == catName }
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedCategory = catName },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            border = BorderStroke(1.dp, PinkPrimary.copy(alpha = 0.25f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(text = emoji, fontSize = 28.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = catName,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "$count quest${if (count == 1) "" else "s"}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = PinkPrimary
+                                    )
+                                }
+                            }
                         }
                     }
-                )
+                    if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+
+            // Categorized sections: put each game inside its category!
+            availableCategories.forEach { (catName, emoji) ->
+                val catGames = baseGames.filter { it.category == catName }
+                if (catGames.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 10.dp, bottom = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(text = emoji, fontSize = 18.sp)
+                                Text(
+                                    text = catName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                            TextButton(
+                                onClick = { selectedCategory = catName },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "See All (${catGames.size}) ›",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PinkPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    items(catGames, key = { it.id }) { game ->
+                        GameShelfCard(
+                            game = game,
+                            onClick = {
+                                if (onGameClick != null) onGameClick(game.id)
+                                else selectedGameId = game.id
+                            }
+                        )
+                    }
+                }
             }
         }
     }
