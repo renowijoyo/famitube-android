@@ -1077,7 +1077,6 @@ private fun ControlsTab(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddChildAccountView(
     onBack: () -> Unit,
