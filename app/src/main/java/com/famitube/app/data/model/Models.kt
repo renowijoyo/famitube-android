@@ -403,6 +403,7 @@ data class ParentChildDto(
     @SerializedName("toddlerEnabledTopics") val toddlerEnabledTopics: List<String> = emptyList(),
     @SerializedName("toddlerHiddenVideoIds") val toddlerHiddenVideoIds: List<String> = emptyList(),
     @SerializedName("toddlerCooldownUntil") val toddlerCooldownUntil: String? = null,
+    @SerializedName("religion") val religion: String? = null,
     @SerializedName("overrides") val overrides: Map<String, Any?> = emptyMap(),
     @SerializedName("createdAt") val createdAt: String = ""
 )
@@ -418,11 +419,13 @@ data class GlobalParentalControlsDto(
     @SerializedName("searchViewLimit") val searchViewLimit: Int = 0,
     @SerializedName("searchRequireApproval") val searchRequireApproval: Boolean = true,
     @SerializedName("contentLanguage") val contentLanguage: String = "en",
-    @SerializedName("cultureMode") val cultureMode: String = "GLOBAL"
+    @SerializedName("cultureMode") val cultureMode: String = "GLOBAL",
+    @SerializedName("religion") val religion: String? = null
 )
 
 data class UpdateChildControlsRequest(
-    @SerializedName("overrides") val overrides: Map<String, Any?>
+    @SerializedName("overrides") val overrides: Map<String, Any?>,
+    @SerializedName("religion") val religion: String? = null
 )
 
 data class RegisterChildRequest(
@@ -430,7 +433,8 @@ data class RegisterChildRequest(
     @SerializedName("name") val name: String,
     @SerializedName("password") val password: String,
     @SerializedName("birthday") val birthday: String? = null,
-    @SerializedName("ageRating") val ageRating: String = "ALL"
+    @SerializedName("ageRating") val ageRating: String = "ALL",
+    @SerializedName("religion") val religion: String? = null
 )
 
 data class ParentVideoRequestDto(
@@ -535,6 +539,7 @@ data class StoryBookDto(
     @SerializedName("category") val category: String = "Stories & Reading",
     @SerializedName("pages") val pages: List<StoryPageDto> = emptyList(),
     @SerializedName("tags") val tags: List<String> = emptyList(),
+    @SerializedName("religion") val religion: String? = null,
     @SerializedName("rewardFamibux") val rewardFamibux: Int = 25,
     @SerializedName("isApproved") val isApproved: Boolean = true,
     @SerializedName("createdAt") val createdAt: String = ""

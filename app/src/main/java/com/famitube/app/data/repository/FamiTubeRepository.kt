@@ -941,7 +941,8 @@ class FamiTubeRepository(
         name: String,
         password: String,
         ageRating: String,
-        birthday: String? = null
+        birthday: String? = null,
+        religion: String? = null
     ): Result<ParentChildDto> {
         return try {
             val response = api.registerParentChild(
@@ -950,7 +951,8 @@ class FamiTubeRepository(
                     name = name.trim(),
                     password = password,
                     birthday = birthday?.trim()?.takeIf { it.isNotEmpty() },
-                    ageRating = ageRating
+                    ageRating = ageRating,
+                    religion = religion?.trim()?.takeIf { it.isNotEmpty() && it != "NONE" }
                 )
             )
             val body = response.body()

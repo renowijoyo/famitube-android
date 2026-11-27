@@ -340,9 +340,9 @@ fun ParentDashboardScreen(
     if (showAddChildDialog) {
         AddChildAccountDialog(
             onDismiss = { showAddChildDialog = false },
-            onSubmit = { name, email, password, ageRating, birthday, onDone ->
+            onSubmit = { name, email, password, ageRating, birthday, religion, onDone ->
                 scope.launch {
-                    val res = repository.registerParentChild(email, name, password, ageRating, birthday)
+                    val res = repository.registerParentChild(email, name, password, ageRating, birthday, religion)
                     res.onSuccess { newChild ->
                         children = listOf(newChild) + children
                         showAddChildDialog = false
@@ -1082,6 +1082,7 @@ private fun AddChildAccountDialog(
         password: String,
         ageRating: String,
         birthday: String?,
+        religion: String?,
         onDone: (String?) -> Unit
     ) -> Unit
 ) {
@@ -1090,6 +1091,7 @@ private fun AddChildAccountDialog(
     var password by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf("") }
     var ageRating by remember { mutableStateOf("YOUNG_KIDS") }
+    var religion by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
@@ -1098,6 +1100,17 @@ private fun AddChildAccountDialog(
         "YOUNG_KIDS" to "Tier 2: Young (4-6)",
         "OLDER_KIDS" to "Tier 3: Older (7+)",
         "ALL" to "All Ages (12+)"
+    )
+
+    val religionOptions = listOf(
+        "NONE" to "None (Secular Only)",
+        "ISLAM" to "Islam",
+        "CHRISTIANITY" to "Christianity",
+        "CATHOLICISM" to "Catholicism",
+        "HINDUISM" to "Hinduism",
+        "BUDDHISM" to "Buddhism",
+        "JUDAISM" to "Judaism",
+        "CONFUCIANISM" to "Confucianism"
     )
 
     fun suggestTierFromBirthday(raw: String): String? {
@@ -1182,6 +1195,50 @@ private fun AddChildAccountDialog(
                         )
                     }
                 }
+                Text(
+                    text = "Religion (optional — if unselected, religious content is hidden)",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    religionOptions.take(2).forEach { (code, label) ->
+                        FilterChip(
+                            selected = if (code == "NONE") religion == null else religion == code,
+                            onClick = { religion = if (code == "NONE") null else code },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    religionOptions.slice(2..4).forEach { (code, label) ->
+                        FilterChip(
+                            selected = religion == code,
+                            onClick = { religion = code },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    religionOptions.drop(5).forEach { (code, label) ->
+                        FilterChip(
+                            selected = religion == code,
+                            onClick = { religion = code },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
                 if (errorMsg != null) {
                     Text(
                         text = errorMsg!!,
@@ -1200,7 +1257,7 @@ private fun AddChildAccountDialog(
                     }
                     isSaving = true
                     errorMsg = null
-                    onSubmit(name, email, password, ageRating, birthday.trim().ifBlank { null }) { err ->
+                    onSubmit(name, email, password, ageRating, birthday.trim().ifBlank { null }, religion) { err ->
                         isSaving = false
                         if (err != null) errorMsg = err
                     }
@@ -1237,6 +1294,7 @@ private fun ChildOverrideDialog(
     var toddlerSubStage by remember { mutableStateOf(child.toddlerSubStage) }
     var contentLanguage by remember { mutableStateOf(child.contentLanguage) }
     var cultureMode by remember { mutableStateOf(child.cultureMode) }
+    var religion by remember { mutableStateOf(child.religion) }
     var enabledTopics by remember {
         mutableStateOf(
             if (child.toddlerEnabledTopics.isNotEmpty()) child.toddlerEnabledTopics.toSet()
@@ -1414,6 +1472,61 @@ private fun ChildOverrideDialog(
                         Switch(checked = ytEnabled, onCheckedChange = { ytEnabled = it })
                     }
                 }
+                Text("Faith & Religious Content Filter", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Optional faith setting. If None, videos and stories with religious themes are completely hidden.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                val relOptions = listOf(
+                    "NONE" to "None (Secular Only)",
+                    "ISLAM" to "Islam",
+                    "CHRISTIANITY" to "Christianity",
+                    "CATHOLICISM" to "Catholicism",
+                    "HINDUISM" to "Hinduism",
+                    "BUDDHISM" to "Buddhism",
+                    "JUDAISM" to "Judaism",
+                    "CONFUCIANISM" to "Confucianism"
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    relOptions.take(2).forEach { (code, label) ->
+                        FilterChip(
+                            selected = if (code == "NONE") religion == null else religion == code,
+                            onClick = { religion = if (code == "NONE") null else code },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    relOptions.slice(2..4).forEach { (code, label) ->
+                        FilterChip(
+                            selected = religion == code,
+                            onClick = { religion = code },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    relOptions.drop(5).forEach { (code, label) ->
+                        FilterChip(
+                            selected = religion == code,
+                            onClick = { religion = code },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
                 OutlinedButton(
                     onClick = {
                         isSaving = true
@@ -1422,6 +1535,7 @@ private fun ChildOverrideDialog(
                                 "parentPin" to null,
                                 "dailyLimitMinutes" to null,
                                 "ageRating" to null,
+                                "religion" to null,
                                 "attentionTrackingEnabled" to null,
                                 "youtubeSearchEnabled" to null
                             )
@@ -1460,6 +1574,7 @@ private fun ChildOverrideDialog(
                             "toddlerSubStage" to toddlerSubStage,
                             "contentLanguage" to contentLanguage,
                             "cultureMode" to cultureMode,
+                            "religion" to religion,
                             "toddlerEnabledTopics" to allToddlerTopics.filter { it in enabledTopics }
                         )
                     ) { err ->

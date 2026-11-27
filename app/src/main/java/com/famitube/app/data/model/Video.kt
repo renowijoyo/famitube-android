@@ -43,6 +43,7 @@ data class Video(
     @SerializedName("isApproved") val isApproved: Boolean = true,
     @SerializedName("views") val views: Int = 0,
     @SerializedName("tags") val tags: List<String> = emptyList(),
+    @SerializedName("religion") val religion: String? = null,
     @SerializedName("createdAt") val createdAt: String = ""
 )
 
