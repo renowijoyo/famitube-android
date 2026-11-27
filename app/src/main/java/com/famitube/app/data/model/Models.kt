@@ -90,6 +90,19 @@ data class LoginRequest(
     @SerializedName("loginType") val loginType: String = "CHILD"
 )
 
+data class RegisterParentRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("referralCode") val referralCode: String? = null
+)
+
+data class GenericAuthResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("referralApplied") val referralApplied: Boolean? = null
+)
+
 data class PlanEntitlementsDto(
     @SerializedName("plan") val plan: String = "FREE",
     @SerializedName("isPremium") val isPremium: Boolean = false,

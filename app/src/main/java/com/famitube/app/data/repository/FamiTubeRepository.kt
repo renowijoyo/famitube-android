@@ -87,6 +87,39 @@ class FamiTubeRepository(
     suspend fun loginParent(email: String, password: String): Result<AuthUser> =
         loginWithType(email, password, "PARENT")
 
+    suspend fun registerParent(
+        name: String,
+        email: String,
+        password: String,
+        referralCode: String? = null
+    ): Result<String> {
+        return try {
+            val response = api.register(
+                RegisterParentRequest(
+                    name = name.trim(),
+                    email = email.trim().lowercase(),
+                    password = password,
+                    referralCode = referralCode?.trim()?.ifBlank { null }
+                )
+            )
+            if (response.isSuccessful) {
+                val body = response.body()
+                val msg = body?.message ?: "Registration successful! Please verify your email before logging in."
+                Result.success(msg)
+            } else {
+                val errBody = response.errorBody()?.string()
+                val errMsg = try {
+                    Gson().fromJson(errBody, GenericAuthResponse::class.java)?.message
+                } catch (_: Exception) {
+                    null
+                }
+                Result.failure(Exception(errMsg ?: "Registration failed. Please check your details."))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private suspend fun loginWithType(
         email: String,
         password: String,

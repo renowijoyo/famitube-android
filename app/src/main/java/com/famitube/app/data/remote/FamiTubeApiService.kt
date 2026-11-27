@@ -15,6 +15,9 @@ interface FamiTubeApiService {
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
+    @POST("auth/register")
+    suspend fun register(@Body body: RegisterParentRequest): Response<GenericAuthResponse>
+
     @GET("auth/me")
     suspend fun getAuthMe(): Response<AuthMeResponse>
 
