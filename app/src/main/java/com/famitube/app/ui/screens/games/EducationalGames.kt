@@ -581,39 +581,7 @@ fun EducationalGamesScreen(
             )
         }
 
-        // 3. Category Filter Chips & All Ages toggle (Similar to Video Selection)
-        item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    FilterChip(
-                        selected = selectedCategory == null,
-                        onClick = { selectedCategory = null },
-                        label = { Text("All Categories", fontWeight = FontWeight.SemiBold) }
-                    )
-                }
-                items(availableCategories) { (catName, emoji) ->
-                    FilterChip(
-                        selected = selectedCategory == catName,
-                        onClick = { selectedCategory = if (selectedCategory == catName) null else catName },
-                        label = { Text("$emoji $catName", fontWeight = FontWeight.SemiBold) }
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = browseAllAges,
-                        onClick = { browseAllAges = !browseAllAges },
-                        label = {
-                            Text(
-                                text = if (browseAllAges) "All Ages" else "Browse All",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    )
-                }
-            }
-        }
-
-        // 4. Categorized Games Selection
+        // 3. Categorized Games Selection
         if (selectedCategory != null) {
             // Category drill-down view (just like video topic selection!)
             item {
