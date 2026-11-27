@@ -15,6 +15,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -43,6 +45,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -286,337 +289,386 @@ fun StoryReaderScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = currentBook?.title ?: "Storybook",
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        stopMic()
-                        onBackClick()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF080C14))
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = PinkPrimary
             )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = PinkPrimary
-                )
-            } else if (currentBook == null || currentPage == null) {
-                Text(
-                    text = "Storybook could not be loaded.",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                var dragAccum by remember { mutableFloatStateOf(0f) }
+        } else if (currentBook == null || currentPage == null) {
+            Text(
+                text = "Storybook could not be loaded.",
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.White
+            )
+        } else {
+            var dragAccum by remember { mutableFloatStateOf(0f) }
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                        .pointerInput(pageIndex, isPageUnlocked, readingMode) {
-                            detectHorizontalDragGestures(
-                                onDragStart = { dragAccum = 0f },
-                                onHorizontalDrag = { _, dragAmount -> dragAccum += dragAmount },
-                                onDragEnd = {
-                                    if (dragAccum < -90f) flipToPage(1)
-                                    else if (dragAccum > 90f) flipToPage(-1)
-                                }
+            // 1. Ambient Background Illustration & Readability Scrim
+            AsyncImage(
+                model = currentPage.imageUrl.ifBlank { currentBook.coverUrl },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xE6080C14),
+                                Color(0x33080C14),
+                                Color(0x66080C14),
+                                Color(0xF5080C14)
                             )
-                        },
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                        )
+                    )
+            )
+
+            // Swipe Gesture Surface over the whole screen
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(pageIndex, isPageUnlocked, readingMode) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { dragAccum = 0f },
+                            onHorizontalDrag = { _, dragAmount -> dragAccum += dragAmount },
+                            onDragEnd = {
+                                if (dragAccum < -80f) flipToPage(1)
+                                else if (dragAccum > 80f) flipToPage(-1)
+                            }
+                        )
+                    }
+            )
+
+            // 2. Top Floating Header Overlay Bar
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(99.dp),
+                color = Color(0xCC0F172A),
+                border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Mode Toggle Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    IconButton(
+                        onClick = {
+                            stopMic()
+                            onBackClick()
+                        },
+                        modifier = Modifier.size(36.dp)
                     ) {
-                        FilterChip(
-                            selected = readingMode == "FLIP",
-                            onClick = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to Stories",
+                            tint = Color.White
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = currentBook.title,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Page ${pageIndex + 1} / ${pages.size}",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 11.sp,
+                            color = Color(0xFFFFD166)
+                        )
+                    }
+
+                    // Mode switch pills
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0x33FFFFFF), RoundedCornerShape(99.dp))
+                            .padding(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(99.dp),
+                            color = if (readingMode == "FLIP") PinkPrimary else Color.Transparent,
+                            modifier = Modifier.clickable {
                                 stopMic()
                                 readingMode = "FLIP"
                                 hintMessage = ""
-                            },
-                            label = { Text("📖 Story Flip", fontWeight = FontWeight.Bold) }
-                        )
-                        FilterChip(
-                            selected = readingMode == "READ_ALONG",
-                            onClick = {
+                            }
+                        ) {
+                            Text(
+                                text = "📖 Flip",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(99.dp),
+                            color = if (readingMode == "READ_ALONG") PinkPrimary else Color.Transparent,
+                            modifier = Modifier.clickable {
                                 stopMic()
                                 readingMode = "READ_ALONG"
                                 currentWordIdx = if (pageIndex in completedPages) pageWords.size else 0
                                 stuckAttempts = 0
                                 hintMessage = ""
-                            },
-                            label = { Text("🎤 Read-Along", fontWeight = FontWeight.Bold) }
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = "Page ${pageIndex + 1} / ${pages.size}",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = BlueSecondary
+                            }
+                        ) {
+                            Text(
+                                text = "🎤 Read",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 3. Center Side Floating Navigation Chevrons
+            if (pageIndex > 0) {
+                Surface(
+                    shape = RoundedCornerShape(99.dp),
+                    color = Color(0xCC0F172A),
+                    border = BorderStroke(1.5.dp, Color(0x40FFFFFF)),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 12.dp)
+                        .size(48.dp)
+                        .clickable { flipToPage(-1) }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Previous Page",
+                            tint = Color.White
                         )
                     }
+                }
+            }
 
-                    // Flip-Book Page Card with Animated Transition
-                    AnimatedContent(
-                        targetState = pageIndex,
-                        transitionSpec = {
-                            fadeIn() togetherWith fadeOut()
-                        },
-                        label = "story_page_flip"
-                    ) { targetIdx ->
-                        val p = pages[targetIdx]
-                        Card(
-                            shape = RoundedCornerShape(22.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer {
-                                    cameraDistance = 16f * density
-                                }
-                        ) {
-                            Column {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(220.dp)
-                                        .background(Color(0xFF1E293B))
-                                ) {
-                                    AsyncImage(
-                                        model = p.imageUrl.ifBlank { currentBook.coverUrl },
-                                        contentDescription = "Page ${targetIdx + 1}",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    listOf(Color.Transparent, Color(0x99000000))
-                                                )
-                                            )
-                                    )
-                                    if (!p.illustrationEmoji.isNullOrBlank()) {
-                                        Text(
-                                            text = p.illustrationEmoji,
-                                            fontSize = 32.sp,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(14.dp)
-                                        )
-                                    }
-                                }
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = if (isPageUnlocked) PinkPrimary.copy(alpha = 0.9f) else Color(0xCC0F172A),
+                border = BorderStroke(1.5.dp, if (isPageUnlocked) PinkPrimary else Color(0x40FFFFFF)),
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .size(48.dp)
+                    .clickable {
+                        if (isLastPage) finishStory() else flipToPage(1)
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (!isPageUnlocked) Icons.Default.Lock
+                                      else if (isLastPage) Icons.Default.Check
+                                      else Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = if (isLastPage) "Finish Story" else "Next Page",
+                        tint = Color.White
+                    )
+                }
+            }
 
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        pageWords.forEachIndexed { idx, word ->
-                                            val isRead = readingMode == "READ_ALONG" && idx < currentWordIdx
-                                            val isCurrent = readingMode == "READ_ALONG" && idx == currentWordIdx
-                                            val bg = when {
-                                                isRead -> MintSuccess.copy(alpha = 0.2f)
-                                                isCurrent -> PinkPrimary.copy(alpha = 0.2f)
-                                                else -> MaterialTheme.colorScheme.surface
-                                            }
-                                            val borderColor = when {
-                                                isRead -> MintSuccess
-                                                isCurrent -> PinkPrimary
-                                                else -> Color.Transparent
-                                            }
-                                            val textColor = when {
-                                                isRead -> MintSuccess
-                                                isCurrent -> PinkPrimary
-                                                else -> MaterialTheme.colorScheme.onSurface
-                                            }
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(10.dp))
-                                                    .background(bg)
-                                                    .border(1.5.dp, borderColor, RoundedCornerShape(10.dp))
-                                                    .clickable { speakText(word, currentBook.language) }
-                                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                                            ) {
-                                                Text(
-                                                    text = word,
-                                                    fontSize = 20.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = textColor
-                                                )
-                                            }
-                                        }
-                                    }
+            // Optional emoji indicator in center area
+            if (!currentPage.illustrationEmoji.isNullOrBlank()) {
+                Text(
+                    text = currentPage.illustrationEmoji,
+                    fontSize = 38.sp,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(y = (-60).dp)
+                )
+            }
 
-                                    Text(
-                                        text = "💡 Tap any word to hear pronunciation",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+            // 4. Bottom Floating Reading & Speech Overlay Card
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = Color(0xE60F172A),
+                border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                shadowElevation = 14.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Story Words FlowRow with large typography and click-to-pronounce
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        pageWords.forEachIndexed { idx, word ->
+                            val isRead = readingMode == "READ_ALONG" && idx < currentWordIdx
+                            val isCurrent = readingMode == "READ_ALONG" && idx == currentWordIdx
+                            val bg = when {
+                                isRead -> MintSuccess.copy(alpha = 0.25f)
+                                isCurrent -> PinkPrimary.copy(alpha = 0.3f)
+                                else -> Color(0x33FFFFFF)
+                            }
+                            val borderColor = when {
+                                isRead -> MintSuccess
+                                isCurrent -> PinkPrimary
+                                else -> Color(0x22FFFFFF)
+                            }
+                            val textColor = when {
+                                isRead -> MintSuccess
+                                isCurrent -> Color(0xFFFF6699)
+                                else -> Color.White
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(bg)
+                                    .border(1.5.dp, borderColor, RoundedCornerShape(10.dp))
+                                    .clickable { speakText(word, currentBook.language) }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = word,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
                             }
                         }
                     }
 
-                    // Mode Controls
+                    Text(
+                        text = "💡 Tap any word to hear pronunciation",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF94A3B8)
+                    )
+
+                    // Controls depending on mode
                     if (readingMode == "FLIP") {
-                        Button(
-                            onClick = { speakText(currentPage.text, currentBook.language) },
-                            colors = ButtonDefaults.buttonColors(containerColor = BlueSecondary),
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Listen to Page", fontWeight = FontWeight.Bold)
+                            Button(
+                                onClick = { speakText(currentPage.text, currentBook.language) },
+                                colors = ButtonDefaults.buttonColors(containerColor = BlueSecondary),
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Listen to Page", fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = {
+                                    if (isLastPage) finishStory() else flipToPage(1)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text(if (isLastPage) "🎉 Finish" else "Next Page →", fontWeight = FontWeight.Bold)
+                            }
                         }
                     } else {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            modifier = Modifier.fillMaxWidth()
+                        // READ_ALONG mode
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                Button(
+                                    onClick = {
+                                        if (isListening) {
+                                            stopMic()
+                                        } else {
+                                            val granted = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (granted) startMic()
+                                            else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isListening) PinkPrimary else BlueSecondary
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Button(
-                                        onClick = {
-                                            if (isListening) {
-                                                stopMic()
-                                            } else {
-                                                val granted = ContextCompat.checkSelfPermission(
-                                                    context,
-                                                    Manifest.permission.RECORD_AUDIO
-                                                ) == PackageManager.PERMISSION_GRANTED
-                                                if (granted) startMic()
-                                                else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    Icon(
+                                        imageVector = if (isListening) Icons.Default.Mic else Icons.Default.MicOff,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isListening) "Listening..." else if (isPageUnlocked) "Page Complete ✓" else "Tap Mic & Read",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Text(
+                                    text = "${minOf(currentWordIdx, pageWords.size)} / ${pageWords.size} words",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp,
+                                    color = if (isPageUnlocked) MintSuccess else PinkPrimary
+                                )
+                            }
+
+                            if (!speechAvailable && !isPageUnlocked) {
+                                OutlinedButton(
+                                    onClick = {
+                                        if (currentWordIdx < pageWords.size) {
+                                            speakText(pageWords[currentWordIdx], currentBook.language)
+                                            currentWordIdx += 1
+                                            if (currentWordIdx >= pageWords.size && pageIndex !in completedPages) {
+                                                completedPages.add(pageIndex)
                                             }
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (isListening) PinkPrimary else BlueSecondary
-                                        ),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isListening) Icons.Default.Mic else Icons.Default.MicOff,
-                                            contentDescription = null
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (isListening) "Listening..." else if (isPageUnlocked) "Page Complete ✓" else "Tap Mic & Read",
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-
-                                    Text(
-                                        text = "${minOf(currentWordIdx, pageWords.size)} / ${pageWords.size} words",
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = if (isPageUnlocked) MintSuccess else PinkPrimary
-                                    )
-                                }
-
-                                if (!speechAvailable && !isPageUnlocked) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            if (currentWordIdx < pageWords.size) {
-                                                speakText(pageWords[currentWordIdx], currentBook.language)
-                                                currentWordIdx += 1
-                                                if (currentWordIdx >= pageWords.size && pageIndex !in completedPages) {
-                                                    completedPages.add(pageIndex)
-                                                }
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("🎙️ Practice Next Word (No-Mic Device)")
-                                    }
-                                }
-
-                                if (hintMessage.isNotBlank()) {
-                                    Text(
-                                        text = hintMessage,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                                if (lastTranscript.isNotBlank()) {
-                                    Text(
-                                        text = "Heard: \"$lastTranscript\"",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                ) {
+                                    Text("🎙️ Practice Next Word (No-Mic Device)")
                                 }
                             }
-                        }
-                    }
 
-                    // Bottom Flip Navigation Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { flipToPage(-1) },
-                            enabled = pageIndex > 0,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Prev")
-                        }
-
-                        Button(
-                            onClick = {
-                                if (isLastPage) finishStory() else flipToPage(1)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isPageUnlocked) PinkPrimary else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (isPageUnlocked) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            modifier = Modifier.weight(1.4f),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            if (!isPageUnlocked) {
-                                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (isLastPage) "Read Aloud to Finish" else "Read Aloud to Flip")
-                            } else if (isLastPage) {
-                                Text("🎉 Finish Story (+Famibux)", fontWeight = FontWeight.Bold)
-                            } else {
-                                Text("Flip Page", fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                            if (hintMessage.isNotBlank()) {
+                                Text(
+                                    text = hintMessage,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                            if (lastTranscript.isNotBlank()) {
+                                Text(
+                                    text = "Heard: \"$lastTranscript\"",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF94A3B8)
+                                )
                             }
                         }
                     }
