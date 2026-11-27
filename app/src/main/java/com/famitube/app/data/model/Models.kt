@@ -534,6 +534,7 @@ data class StoryBookDto(
     @SerializedName("language") val language: String = "en",
     @SerializedName("category") val category: String = "Stories & Reading",
     @SerializedName("pages") val pages: List<StoryPageDto> = emptyList(),
+    @SerializedName("tags") val tags: List<String> = emptyList(),
     @SerializedName("rewardFamibux") val rewardFamibux: Int = 25,
     @SerializedName("isApproved") val isApproved: Boolean = true,
     @SerializedName("createdAt") val createdAt: String = ""
