@@ -289,10 +289,23 @@ fun StoryReaderScreen(
         }
     }
 
+    val isDark = MaterialTheme.colorScheme.background != BackgroundLight
+    val screenBg = if (isDark) Color(0xFF080C14) else BackgroundLight
+    val headerSurfaceColor = if (isDark) Color(0xCC0F172A) else Color(0xF2FFFFFF)
+    val headerBorderColor = if (isDark) Color(0x33FFFFFF) else Color(0x1F0F172A)
+    val headerTextColor = if (isDark) Color.White else TextPrimaryLight
+    val headerPageColor = if (isDark) Color(0xFFFFD166) else Color(0xFFB45309)
+    val chevronBg = if (isDark) Color(0xCC0F172A) else Color(0xF2FFFFFF)
+    val chevronBorder = if (isDark) Color(0x40FFFFFF) else Color(0x1F0F172A)
+    val chevronIconTint = if (isDark) Color.White else TextPrimaryLight
+    val bottomCardBg = if (isDark) Color(0xF20F172A) else Color(0xFAFFFFFF)
+    val bottomCardBorder = if (isDark) Color(0x33FFFFFF) else Color(0x1F0F172A)
+    val subtleTextColor = if (isDark) Color(0xFF94A3B8) else TextSecondaryLight
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080C14))
+            .background(screenBg)
     ) {
         if (isLoading) {
             CircularProgressIndicator(
@@ -303,7 +316,7 @@ fun StoryReaderScreen(
             Text(
                 text = "Storybook could not be loaded.",
                 modifier = Modifier.align(Alignment.Center),
-                color = Color.White
+                color = headerTextColor
             )
         } else {
             var dragAccum by remember { mutableFloatStateOf(0f) }
@@ -313,19 +326,34 @@ fun StoryReaderScreen(
                 model = currentPage.imageUrl.ifBlank { currentBook.coverUrl },
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        if (!isDark) {
+                            alpha = 0.35f
+                        }
+                    }
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xE6080C14),
-                                Color(0x33080C14),
-                                Color(0x66080C14),
-                                Color(0xF5080C14)
-                            )
+                            colors = if (isDark) {
+                                listOf(
+                                    Color(0xE6080C14),
+                                    Color(0x33080C14),
+                                    Color(0x66080C14),
+                                    Color(0xF5080C14)
+                                )
+                            } else {
+                                listOf(
+                                    Color(0xD9FFFFFF),
+                                    Color(0x22FFFFFF),
+                                    Color(0x55FFFFFF),
+                                    Color(0xF5F8FAFC)
+                                )
+                            }
                         )
                     )
             )
@@ -354,9 +382,9 @@ fun StoryReaderScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(99.dp),
-                color = Color(0xCC0F172A),
-                border = BorderStroke(1.dp, Color(0x33FFFFFF)),
-                shadowElevation = 8.dp
+                color = headerSurfaceColor,
+                border = BorderStroke(1.dp, headerBorderColor),
+                shadowElevation = if (isDark) 8.dp else 4.dp
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -373,7 +401,7 @@ fun StoryReaderScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back to Stories",
-                            tint = Color.White
+                            tint = headerTextColor
                         )
                     }
 
@@ -381,7 +409,7 @@ fun StoryReaderScreen(
                         Text(
                             text = currentBook.title,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = headerTextColor,
                             fontSize = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -390,14 +418,14 @@ fun StoryReaderScreen(
                             text = "Page ${pageIndex + 1} / ${pages.size}",
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 11.sp,
-                            color = Color(0xFFFFD166)
+                            color = headerPageColor
                         )
                     }
 
                     // Mode switch pills
                     Row(
                         modifier = Modifier
-                            .background(Color(0x33FFFFFF), RoundedCornerShape(99.dp))
+                            .background(if (isDark) Color(0x33FFFFFF) else Color(0x140F172A), RoundedCornerShape(99.dp))
                             .padding(2.dp),
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
@@ -414,7 +442,7 @@ fun StoryReaderScreen(
                                 text = "📖 Flip",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = if (readingMode == "FLIP") Color.White else headerTextColor,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -433,7 +461,7 @@ fun StoryReaderScreen(
                                 text = "🎤 Read",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = if (readingMode == "READ_ALONG") Color.White else headerTextColor,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -445,9 +473,9 @@ fun StoryReaderScreen(
             if (pageIndex > 0) {
                 Surface(
                     shape = RoundedCornerShape(99.dp),
-                    color = Color(0xCC0F172A),
-                    border = BorderStroke(1.5.dp, Color(0x40FFFFFF)),
-                    shadowElevation = 8.dp,
+                    color = chevronBg,
+                    border = BorderStroke(1.5.dp, chevronBorder),
+                    shadowElevation = if (isDark) 8.dp else 4.dp,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(start = 12.dp)
@@ -458,7 +486,7 @@ fun StoryReaderScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Previous Page",
-                            tint = Color.White
+                            tint = chevronIconTint
                         )
                     }
                 }
@@ -466,9 +494,9 @@ fun StoryReaderScreen(
 
             Surface(
                 shape = RoundedCornerShape(99.dp),
-                color = if (isPageUnlocked) PinkPrimary.copy(alpha = 0.9f) else Color(0xCC0F172A),
-                border = BorderStroke(1.5.dp, if (isPageUnlocked) PinkPrimary else Color(0x40FFFFFF)),
-                shadowElevation = 8.dp,
+                color = if (isPageUnlocked) PinkPrimary.copy(alpha = 0.9f) else chevronBg,
+                border = BorderStroke(1.5.dp, if (isPageUnlocked) PinkPrimary else chevronBorder),
+                shadowElevation = if (isDark) 8.dp else 4.dp,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 12.dp)
@@ -483,7 +511,7 @@ fun StoryReaderScreen(
                                       else if (isLastPage) Icons.Default.Check
                                       else Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = if (isLastPage) "Finish Story" else "Next Page",
-                        tint = Color.White
+                        tint = if (isPageUnlocked) Color.White else chevronIconTint
                     )
                 }
             }
@@ -507,9 +535,9 @@ fun StoryReaderScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
-                color = Color(0xF20F172A),
-                border = BorderStroke(1.5.dp, Color(0x33FFFFFF)),
-                shadowElevation = 14.dp
+                color = bottomCardBg,
+                border = BorderStroke(1.5.dp, bottomCardBorder),
+                shadowElevation = if (isDark) 14.dp else 6.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -527,19 +555,19 @@ fun StoryReaderScreen(
                             val isRead = readingMode == "READ_ALONG" && idx < currentWordIdx
                             val isCurrent = readingMode == "READ_ALONG" && idx == currentWordIdx
                             val bg = when {
-                                isRead -> MintSuccess.copy(alpha = 0.28f)
-                                isCurrent -> PinkPrimary.copy(alpha = 0.32f)
-                                else -> Color(0xFF1E293B)
+                                isRead -> MintSuccess.copy(alpha = if (isDark) 0.28f else 0.18f)
+                                isCurrent -> PinkPrimary.copy(alpha = if (isDark) 0.32f else 0.18f)
+                                else -> if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
                             }
                             val borderColor = when {
                                 isRead -> MintSuccess
                                 isCurrent -> PinkPrimary
-                                else -> Color(0x44FFFFFF)
+                                else -> if (isDark) Color(0x44FFFFFF) else Color(0xFFCBD5E1)
                             }
                             val textColor = when {
-                                isRead -> MintSuccess
-                                isCurrent -> PinkPrimary
-                                else -> Color.White
+                                isRead -> if (isDark) MintSuccess else Color(0xFF059669)
+                                isCurrent -> if (isDark) PinkPrimary else Color(0xFFE02856)
+                                else -> if (isDark) Color.White else TextPrimaryLight
                             }
                             Box(
                                 modifier = Modifier
@@ -562,7 +590,7 @@ fun StoryReaderScreen(
                     Text(
                         text = "💡 Tap any word to hear pronunciation",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF94A3B8)
+                        color = subtleTextColor
                     )
 
                     // Controls depending on mode
@@ -611,7 +639,7 @@ fun StoryReaderScreen(
                                                 context,
                                                 Manifest.permission.RECORD_AUDIO
                                             ) == PackageManager.PERMISSION_GRANTED
-                                            if (granted) startMic()
+                                             if (granted) startMic()
                                             else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                         }
                                     },
@@ -651,7 +679,7 @@ fun StoryReaderScreen(
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = headerTextColor)
                                 ) {
                                     Text("🎙️ Practice Next Word (No-Mic Device)")
                                 }
@@ -662,14 +690,14 @@ fun StoryReaderScreen(
                                     text = hintMessage,
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
+                                    color = headerTextColor
                                 )
                             }
                             if (lastTranscript.isNotBlank()) {
                                 Text(
                                     text = "Heard: \"$lastTranscript\"",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF94A3B8)
+                                    color = subtleTextColor
                                 )
                             }
                         }
