@@ -1144,15 +1144,6 @@ private fun AddChildAccountView(
         null
     }
 
-    val birthdayInteractionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(birthdayInteractionSource) {
-        birthdayInteractionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Release) {
-                openDatePicker()
-            }
-        }
-    }
-
     fun openDatePicker() {
         val cal = java.util.Calendar.getInstance()
         val parts = birthday.trim().split("-")
@@ -1186,6 +1177,15 @@ private fun AddChildAccountView(
         )
         datePicker.datePicker.maxDate = System.currentTimeMillis()
         datePicker.show()
+    }
+
+    val birthdayInteractionSource = remember { MutableInteractionSource() }
+    LaunchedEffect(birthdayInteractionSource) {
+        birthdayInteractionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) {
+                openDatePicker()
+            }
+        }
     }
 
     BackHandler(enabled = !isSaving) { onBack() }
