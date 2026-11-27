@@ -69,9 +69,10 @@ fun ProfileScreen(
         }
     }
 
-    val displayName = prefs.loggedInName.ifBlank { "FamiTube Explorer" }
+    val isParent = repository.isParentMode()
+    val displayName = if (isParent) prefs.loggedInName.ifBlank { "Parent" } else prefs.loggedInName.ifBlank { "FamiTube Explorer" }
     val email = prefs.loggedInEmail.ifBlank { "Not signed in" }
-    val initial = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "F"
+    val initial = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: if (isParent) "P" else "F"
     val remainingMinutes = prefs.getRemainingMinutes()
 
     val ageLabel = when (ageFilter) {
@@ -162,178 +163,182 @@ fun ProfileScreen(
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = ageLabel,
+                            text = if (isParent) "Parent Account" else ageLabel,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = PinkPrimary
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    if (!isParent) {
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(YellowWarning.copy(alpha = 0.15f))
-                                .clickable(onClick = onNavigateToAchievements)
-                                .padding(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "⭐ $starBalance",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFFB45309)
-                            )
-                            Text(
-                                text = "Stars",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(YellowWarning.copy(alpha = 0.15f))
+                                    .clickable(onClick = onNavigateToAchievements)
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "⭐ $starBalance",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFFB45309)
+                                )
+                                Text(
+                                    text = "Stars",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
 
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(PinkPrimary.copy(alpha = 0.12f))
-                                .clickable(onClick = onNavigateToFavorites)
-                                .padding(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "❤️ ${favoriteIds.size}",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = PinkPrimary
-                            )
-                            Text(
-                                text = "Favorites",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(PinkPrimary.copy(alpha = 0.12f))
+                                    .clickable(onClick = onNavigateToFavorites)
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "❤️ ${favoriteIds.size}",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = PinkPrimary
+                                )
+                                Text(
+                                    text = "Favorites",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
 
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "${remainingMinutes}m",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (remainingMinutes < 10) Color(0xFFDC2626) else BlueSecondary
-                            )
-                            Text(
-                                text = "Left Today",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "${remainingMinutes}m",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (remainingMinutes < 10) Color(0xFFDC2626) else BlueSecondary
+                                )
+                                Text(
+                                    text = "Left Today",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // 2. Favorites Section (List of Favorites under Profile)
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp)
+            if (!isParent) {
+                // 2. Favorites Section (List of Favorites under Profile)
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = "❤️",
-                                fontSize = 18.sp
-                            )
-                            Text(
-                                text = "My Favorites",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "(${favoriteVideos.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PinkPrimary
-                            )
-                        }
-                        if (favoriteVideos.isNotEmpty()) {
-                            TextButton(onClick = onNavigateToFavorites) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
-                                    text = "See All ›",
+                                    text = "❤️",
+                                    fontSize = 18.sp
+                                )
+                                Text(
+                                    text = "My Favorites",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "(${favoriteVideos.size})",
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = PinkPrimary
                                 )
                             }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    if (favoriteVideos.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 18.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "No favorite videos yet!",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Tap the heart icon when watching any video to save it here.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            favoriteVideos.take(6).forEach { video ->
-                                VideoCard(
-                                    video = video,
-                                    onClick = { onVideoClick(video.id) },
-                                    isFavorite = true
-                                )
-                            }
-
-                            if (favoriteVideos.size > 6) {
-                                OutlinedButton(
-                                    onClick = onNavigateToFavorites,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
+                            if (favoriteVideos.isNotEmpty()) {
+                                TextButton(onClick = onNavigateToFavorites) {
                                     Text(
-                                        text = "View All ${favoriteVideos.size} Favorites ›",
+                                        text = "See All ›",
                                         fontWeight = FontWeight.Bold,
                                         color = PinkPrimary
                                     )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        if (favoriteVideos.isEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 18.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "No favorite videos yet!",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Tap the heart icon when watching any video to save it here.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                favoriteVideos.take(6).forEach { video ->
+                                    VideoCard(
+                                        video = video,
+                                        onClick = { onVideoClick(video.id) },
+                                        isFavorite = true
+                                    )
+                                }
+
+                                if (favoriteVideos.size > 6) {
+                                    OutlinedButton(
+                                        onClick = onNavigateToFavorites,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = "View All ${favoriteVideos.size} Favorites ›",
+                                            fontWeight = FontWeight.Bold,
+                                            color = PinkPrimary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -395,52 +400,70 @@ fun ProfileScreen(
             }
 
             // 3. Actions
-            OutlinedButton(
-                onClick = onNavigateToFavorites,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = null,
-                    tint = PinkPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Open Favorites Library (${favoriteVideos.size})", fontWeight = FontWeight.SemiBold)
-            }
+            if (!isParent) {
+                OutlinedButton(
+                    onClick = onNavigateToFavorites,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = PinkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Open Favorites Library (${favoriteVideos.size})", fontWeight = FontWeight.SemiBold)
+                }
 
-            OutlinedButton(
-                onClick = onNavigateToAchievements,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EmojiEvents,
-                    contentDescription = null,
-                    tint = PinkPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("View Badges & Stars", fontWeight = FontWeight.SemiBold)
-            }
+                OutlinedButton(
+                    onClick = onNavigateToAchievements,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EmojiEvents,
+                        contentDescription = null,
+                        tint = PinkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("View Badges & Stars", fontWeight = FontWeight.SemiBold)
+                }
 
-            OutlinedButton(
-                onClick = { showParentalGate = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = PinkPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Parental Controls", fontWeight = FontWeight.SemiBold)
+                OutlinedButton(
+                    onClick = { showParentalGate = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = PinkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Parental Controls", fontWeight = FontWeight.SemiBold)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onNavigateToParental,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = PinkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Parental Settings", fontWeight = FontWeight.SemiBold)
+                }
             }
 
             if (repository.isLoggedIn()) {

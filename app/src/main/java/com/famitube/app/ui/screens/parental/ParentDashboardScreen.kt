@@ -61,7 +61,7 @@ fun ParentDashboardScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Requests, 1 = Kids, 2 = Controls
+    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Requests, 1 = Kids, 2 = Global Controls
     var isLoading by remember { mutableStateOf(true) }
     var children by remember { mutableStateOf<List<ParentChildDto>>(emptyList()) }
     var videoRequests by remember { mutableStateOf<List<ParentVideoRequestDto>>(emptyList()) }
@@ -299,7 +299,7 @@ fun ParentDashboardScreen(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
                     text = {
-                        Text("Controls", fontWeight = FontWeight.SemiBold)
+                        Text("Global Controls", fontWeight = FontWeight.SemiBold)
                     }
                 )
             }

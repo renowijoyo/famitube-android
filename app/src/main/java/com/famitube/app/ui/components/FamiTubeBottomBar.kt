@@ -34,7 +34,7 @@ fun FamiTubeBottomBar(
             listOf(
                 Triple(Screen.ParentDashboard.route, "Dashboard", Icons.Default.FamilyRestroom),
                 Triple(Screen.Notifications.route, "Alerts", Icons.Default.Notifications),
-                Triple(Screen.ParentalSettings.route, "Settings", Icons.Default.Settings)
+                Triple(Screen.Profile.route, "Profile", Icons.Default.Person)
             )
         } else if (isSimpleMode) {
             listOf(
