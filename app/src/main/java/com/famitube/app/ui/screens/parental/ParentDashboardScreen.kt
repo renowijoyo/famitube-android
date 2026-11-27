@@ -1,9 +1,13 @@
 package com.famitube.app.ui.screens.parental
 
+import android.app.Activity
 import android.app.DatePickerDialog
+import android.content.ContextWrapper
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -1131,6 +1135,24 @@ private fun AddChildAccountView(
         }
     }
 
+    val hostingActivity = remember(context) {
+        var c = context
+        while (c is ContextWrapper) {
+            if (c is Activity) return@remember c
+            c = c.baseContext
+        }
+        null
+    }
+
+    val birthdayInteractionSource = remember { MutableInteractionSource() }
+    LaunchedEffect(birthdayInteractionSource) {
+        birthdayInteractionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) {
+                openDatePicker()
+            }
+        }
+    }
+
     fun openDatePicker() {
         val cal = java.util.Calendar.getInstance()
         val parts = birthday.trim().split("-")
@@ -1147,8 +1169,9 @@ private fun AddChildAccountView(
                 initDay = d
             }
         }
+        val dialogContext = hostingActivity ?: context
         val datePicker = DatePickerDialog(
-            context,
+            dialogContext,
             { _, year, monthOfYear, dayOfMonth ->
                 val formatted = String.format("%04d-%02d-%02d", year, monthOfYear + 1, dayOfMonth)
                 birthday = formatted
@@ -1215,7 +1238,7 @@ private fun AddChildAccountView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.ChildCare,
+                        Icons.Default.Face,
                         contentDescription = null,
                         tint = PinkPrimary,
                         modifier = Modifier.size(32.dp)
@@ -1259,27 +1282,21 @@ private fun AddChildAccountView(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = if (birthday.isBlank()) "Tap to select birthday" else birthday,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Birthday (Date Picker)") },
-                    trailingIcon = {
-                        IconButton(onClick = { openDatePicker() }) {
-                            Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
-                        }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clip(RoundedCornerShape(4.dp))
-                        .clickable { openDatePicker() }
-                )
-            }
+            OutlinedTextField(
+                value = birthday,
+                onValueChange = {},
+                readOnly = true,
+                interactionSource = birthdayInteractionSource,
+                label = { Text("Birthday (Date Picker)") },
+                placeholder = { Text("Tap to select birthday (YYYY-MM-DD)") },
+                trailingIcon = {
+                    IconButton(onClick = { openDatePicker() }) {
+                        Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
             Text(
                 text = "Selecting birthday automatically suggests the recommended age tier below.",
                 style = MaterialTheme.typography.bodySmall,
