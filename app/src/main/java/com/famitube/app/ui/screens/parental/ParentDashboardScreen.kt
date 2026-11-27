@@ -1,5 +1,6 @@
 package com.famitube.app.ui.screens.parental
 
+import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,7 +69,7 @@ fun ParentDashboardScreen(
     var globalControls by remember { mutableStateOf(GlobalParentalControlsDto()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    var showAddChildDialog by remember { mutableStateOf(false) }
+    var isAddingChild by remember { mutableStateOf(false) }
     var childToEdit by remember { mutableStateOf<ParentChildDto?>(null) }
     var childForActivityHistory by remember { mutableStateOf<ParentChildDto?>(null) }
     var childToDelete by remember { mutableStateOf<ParentChildDto?>(null) }
@@ -99,6 +100,26 @@ fun ParentDashboardScreen(
     }
 
     val pendingCount = videoRequests.count { it.status == "PENDING" }
+
+    if (isAddingChild) {
+        AddChildAccountView(
+            onBack = { isAddingChild = false },
+            onSubmit = { name, email, password, ageRating, birthday, religion, onDone ->
+                scope.launch {
+                    val res = repository.registerParentChild(email, name, password, ageRating, birthday, religion)
+                    res.onSuccess { newChild ->
+                        children = listOf(newChild) + children
+                        isAddingChild = false
+                        Toast.makeText(context, "Child account created!", Toast.LENGTH_SHORT).show()
+                        onDone(null)
+                    }.onFailure { err ->
+                        onDone(err.message ?: "Failed to create child account")
+                    }
+                }
+            }
+        )
+        return
+    }
 
     if (childForActivityHistory != null) {
         ChildActivityHistoryView(
@@ -202,7 +223,7 @@ fun ParentDashboardScreen(
         floatingActionButton = {
             if (selectedTab == 1) {
                 FloatingActionButton(
-                    onClick = { showAddChildDialog = true },
+                    onClick = { isAddingChild = true },
                     containerColor = PinkPrimary,
                     contentColor = Color.White
                 ) {
@@ -306,7 +327,7 @@ fun ParentDashboardScreen(
 
                     1 -> MyKidsTab(
                         children = children,
-                        onAddChild = { showAddChildDialog = true },
+                        onAddChild = { isAddingChild = true },
                         onViewHistory = { childForActivityHistory = it },
                         onEditOverrides = { childToEdit = it },
                         onDeleteChild = { childToDelete = it }
@@ -337,24 +358,7 @@ fun ParentDashboardScreen(
         }
     }
 
-    if (showAddChildDialog) {
-        AddChildAccountDialog(
-            onDismiss = { showAddChildDialog = false },
-            onSubmit = { name, email, password, ageRating, birthday, religion, onDone ->
-                scope.launch {
-                    val res = repository.registerParentChild(email, name, password, ageRating, birthday, religion)
-                    res.onSuccess { newChild ->
-                        children = listOf(newChild) + children
-                        showAddChildDialog = false
-                        Toast.makeText(context, "Child account created!", Toast.LENGTH_SHORT).show()
-                        onDone(null)
-                    }.onFailure { err ->
-                        onDone(err.message ?: "Failed to create child account")
-                    }
-                }
-            }
-        )
-    }
+    // Child creation & child activity history are rendered as their own page views above
 
 // Child activity history is displayed as its own page view above
 
@@ -1073,9 +1077,10 @@ private fun ControlsTab(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddChildAccountDialog(
-    onDismiss: () -> Unit,
+private fun AddChildAccountView(
+    onBack: () -> Unit,
     onSubmit: (
         name: String,
         email: String,
@@ -1086,6 +1091,7 @@ private fun AddChildAccountDialog(
         onDone: (String?) -> Unit
     ) -> Unit
 ) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -1125,49 +1131,167 @@ private fun AddChildAccountDialog(
         }
     }
 
-    AlertDialog(
-        onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text("Add Child Account", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it; errorMsg = null },
-                    label = { Text("Child Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+    fun openDatePicker() {
+        val cal = java.util.Calendar.getInstance()
+        val parts = birthday.trim().split("-")
+        var initYear = cal.get(java.util.Calendar.YEAR)
+        var initMonth = cal.get(java.util.Calendar.MONTH)
+        var initDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+        if (parts.size == 3) {
+            val y = parts[0].toIntOrNull()
+            val m = parts[1].toIntOrNull()
+            val d = parts[2].toIntOrNull()
+            if (y != null && m != null && d != null && m in 1..12 && d in 1..31) {
+                initYear = y
+                initMonth = m - 1
+                initDay = d
+            }
+        }
+        val datePicker = DatePickerDialog(
+            context,
+            { _, year, monthOfYear, dayOfMonth ->
+                val formatted = String.format("%04d-%02d-%02d", year, monthOfYear + 1, dayOfMonth)
+                birthday = formatted
+                errorMsg = null
+                suggestTierFromBirthday(formatted)?.let { suggested ->
+                    ageRating = suggested
+                }
+            },
+            initYear,
+            initMonth,
+            initDay
+        )
+        datePicker.datePicker.maxDate = System.currentTimeMillis()
+        datePicker.show()
+    }
+
+    BackHandler(enabled = !isSaving) { onBack() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "Add Child Account",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Create a safe profile for your kid",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack, enabled = !isSaving) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.ChildCare,
+                        contentDescription = null,
+                        tint = PinkPrimary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Set up your child's profile and credentials. Picking their birthday automatically suggests the recommended age tier.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it; errorMsg = null },
+                label = { Text("Child Name") },
+                placeholder = { Text("e.g. Maya") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it; errorMsg = null },
+                label = { Text("Child Email / Login") },
+                placeholder = { Text("e.g. maya@famitube.demo") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it; errorMsg = null },
+                label = { Text("Password (min 6 chars)") },
+                placeholder = { Text("••••••••") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it; errorMsg = null },
-                    label = { Text("Child Email / Gmail") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it; errorMsg = null },
-                    label = { Text("Password (min 6 chars)") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = birthday,
-                    onValueChange = {
-                        birthday = it
-                        suggestTierFromBirthday(it)?.let { suggested -> ageRating = suggested }
+                    value = if (birthday.isBlank()) "Tap to select birthday" else birthday,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Birthday (Date Picker)") },
+                    trailingIcon = {
+                        IconButton(onClick = { openDatePicker() }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Select Birthday", tint = PinkPrimary)
+                        }
                     },
-                    label = { Text("Birthday (optional, YYYY-MM-DD)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable { openDatePicker() }
+                )
+            }
+            Text(
+                text = "Selecting birthday automatically suggests the recommended age tier below.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = (-8).dp)
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "Age Tier (parent decides; birthday only suggests)",
+                    text = "Age Tier (Parent decides; birthday suggests)",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1177,7 +1301,7 @@ private fun AddChildAccountDialog(
                         FilterChip(
                             selected = ageRating == code,
                             onClick = { ageRating = code },
-                            label = { Text(label, fontSize = 10.sp) },
+                            label = { Text(label, fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -1190,15 +1314,23 @@ private fun AddChildAccountDialog(
                         FilterChip(
                             selected = ageRating == code,
                             onClick = { ageRating = code },
-                            label = { Text(label, fontSize = 10.sp) },
+                            label = { Text(label, fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "Religion (optional — if unselected, religious content is hidden)",
+                    text = "Faith & Religion (optional)",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "If unselected, religious content is completely hidden for this child.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1208,7 +1340,7 @@ private fun AddChildAccountDialog(
                         FilterChip(
                             selected = if (code == "NONE") religion == null else religion == code,
                             onClick = { religion = if (code == "NONE") null else code },
-                            label = { Text(label, fontSize = 10.sp) },
+                            label = { Text(label, fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -1221,7 +1353,7 @@ private fun AddChildAccountDialog(
                         FilterChip(
                             selected = religion == code,
                             onClick = { religion = code },
-                            label = { Text(label, fontSize = 10.sp) },
+                            label = { Text(label, fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -1234,46 +1366,64 @@ private fun AddChildAccountDialog(
                         FilterChip(
                             selected = religion == code,
                             onClick = { religion = code },
-                            label = { Text(label, fontSize = 10.sp) },
+                            label = { Text(label, fontSize = 11.sp) },
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
-                if (errorMsg != null) {
+            }
+
+            if (errorMsg != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = errorMsg!!,
-                        color = PinkLight,
-                        style = MaterialTheme.typography.bodySmall
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
                     )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isBlank() || email.isBlank() || password.length < 6) {
-                        errorMsg = "Enter name, valid email, and a 6+ char password."
-                        return@Button
-                    }
-                    isSaving = true
-                    errorMsg = null
-                    onSubmit(name, email, password, ageRating, birthday.trim().ifBlank { null }, religion) { err ->
-                        isSaving = false
-                        if (err != null) errorMsg = err
-                    }
-                },
-                enabled = !isSaving,
-                colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(if (isSaving) "Saving..." else "Create")
+                OutlinedButton(
+                    onClick = onBack,
+                    enabled = !isSaving,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Cancel")
+                }
+                Button(
+                    onClick = {
+                        if (name.isBlank() || email.isBlank() || password.length < 6) {
+                            errorMsg = "Enter name, valid email, and a 6+ char password."
+                            return@Button
+                        }
+                        isSaving = true
+                        errorMsg = null
+                        onSubmit(name, email, password, ageRating, birthday.trim().ifBlank { null }, religion) { err ->
+                            isSaving = false
+                            if (err != null) errorMsg = err
+                        }
+                    },
+                    enabled = !isSaving,
+                    colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                    modifier = Modifier.weight(1.5f)
+                ) {
+                    Text(if (isSaving) "Creating Account..." else "Create Child Account")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
-                Text("Cancel")
-            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
-    )
+    }
 }
 
 @Composable
