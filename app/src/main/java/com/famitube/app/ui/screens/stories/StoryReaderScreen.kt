@@ -507,12 +507,14 @@ fun StoryReaderScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
-                color = Color(0xE60F172A),
-                border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                color = Color(0xF20F172A),
+                border = BorderStroke(1.5.dp, Color(0x33FFFFFF)),
                 shadowElevation = 14.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier
+                        .padding(14.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     // Story Words FlowRow with large typography and click-to-pronounce
@@ -525,27 +527,27 @@ fun StoryReaderScreen(
                             val isRead = readingMode == "READ_ALONG" && idx < currentWordIdx
                             val isCurrent = readingMode == "READ_ALONG" && idx == currentWordIdx
                             val bg = when {
-                                isRead -> MintSuccess.copy(alpha = 0.25f)
-                                isCurrent -> PinkPrimary.copy(alpha = 0.3f)
-                                else -> Color(0x33FFFFFF)
+                                isRead -> MintSuccess.copy(alpha = 0.28f)
+                                isCurrent -> PinkPrimary.copy(alpha = 0.32f)
+                                else -> Color(0xFF1E293B)
                             }
                             val borderColor = when {
                                 isRead -> MintSuccess
                                 isCurrent -> PinkPrimary
-                                else -> Color(0x22FFFFFF)
+                                else -> Color(0x44FFFFFF)
                             }
                             val textColor = when {
                                 isRead -> MintSuccess
-                                isCurrent -> Color(0xFFFF6699)
+                                isCurrent -> PinkPrimary
                                 else -> Color.White
                             }
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(bg)
-                                    .border(1.5.dp, borderColor, RoundedCornerShape(10.dp))
+                                    .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
                                     .clickable { speakText(word, currentBook.language) }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Text(
                                     text = word,
